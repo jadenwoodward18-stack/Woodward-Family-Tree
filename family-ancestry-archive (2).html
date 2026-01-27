@@ -1,0 +1,4101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Woodward Family Tree</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --parchment: #f4f1e8;
+            --aged-paper: #e8e3d3;
+            --ink-dark: #2b2416;
+            --ink-faded: #5a4e3a;
+            --sepia: #704214;
+            --border-color: #c4b89a;
+            --shadow: rgba(43, 36, 22, 0.15);
+        }
+
+        body {
+            font-family: 'Garamond', 'Georgia', serif;
+            background: linear-gradient(to bottom, #d4cdb8 0%, #e8e3d3 100%);
+            color: var(--ink-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            background: var(--aged-paper);
+            border-bottom: 2px solid var(--border-color);
+            padding: 2rem 3rem;
+            box-shadow: 0 2px 8px var(--shadow);
+            position: relative;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--border-color), transparent);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: normal;
+            letter-spacing: 0.1em;
+            text-align: center;
+            color: var(--ink-dark);
+            text-transform: uppercase;
+            font-variant: small-caps;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--ink-faded);
+            margin-top: 0.5rem;
+            letter-spacing: 0.15em;
+            font-style: italic;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-size: 1rem;
+            color: var(--ink-faded);
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            position: relative;
+            transition: color 0.3s;
+            letter-spacing: 0.05em;
+        }
+
+        nav button:hover {
+            color: var(--sepia);
+        }
+
+        nav button.active {
+            color: var(--ink-dark);
+        }
+
+        nav button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--sepia);
+        }
+
+        /* Settings Button */
+        .settings-btn {
+            position: absolute;
+            top: 2rem;
+            right: 3rem;
+            background: transparent;
+            border: 2px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            color: var(--ink-dark);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .settings-btn:hover {
+            background: var(--parchment);
+            border-color: var(--sepia);
+            color: var(--sepia);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .view {
+            display: none;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Tree View */
+        .tree-container {
+            background: var(--parchment);
+            border: 2px solid var(--border-color);
+            box-shadow: 0 4px 20px var(--shadow);
+            padding: 3rem;
+            position: relative;
+            overflow: auto;
+            max-height: calc(100vh - 300px);
+        }
+
+        .tree-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .control-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .control-label {
+            font-size: 0.85rem;
+            color: var(--ink-faded);
+            letter-spacing: 0.05em;
+        }
+
+        select, .tree-controls button {
+            font-family: inherit;
+            font-size: 0.9rem;
+            padding: 0.4rem 1rem;
+            background: var(--aged-paper);
+            border: 1px solid var(--border-color);
+            color: var(--ink-dark);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tree-controls button:hover, select:hover {
+            background: var(--parchment);
+            border-color: var(--sepia);
+        }
+
+        /* Tree Visualization */
+        .tree {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 2rem;
+            transform-origin: top center;
+            transition: transform 0.3s ease;
+            width: 100%;
+        }
+
+        .generation-row {
+            display: flex;
+            justify-content: center;
+            gap: 6rem;
+            width: 100%;
+            position: relative;
+        }
+
+        .lineage-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            position: relative;
+            min-width: 380px;
+            flex-shrink: 0;
+        }
+
+        .lineage-title {
+            font-size: 1.2rem;
+            font-variant: small-caps;
+            letter-spacing: 0.1em;
+            color: var(--sepia);
+            margin-bottom: 0.5rem;
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            width: 100%;
+        }
+
+        .couple-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .couple-pair {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .marriage-symbol {
+            font-size: 1.3rem;
+            color: var(--sepia);
+            padding: 0 0.4rem;
+        }
+
+        /* Sibling Groups with Connection Lines */
+        .sibling-group {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            position: relative;
+            padding-top: 1.5rem;
+        }
+
+        .sibling-group::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 5%;
+            right: 5%;
+            height: 0.8rem;
+            border-left: 2px solid var(--border-color);
+            border-right: 2px solid var(--border-color);
+            border-top: 2px solid var(--border-color);
+        }
+
+        .sibling-group .person-node::before {
+            content: '';
+            position: absolute;
+            top: -1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 0.8rem;
+            background: var(--border-color);
+        }
+
+        /* Children Groups */
+        .children-group {
+            display: flex;
+            gap: 1rem;
+            position: relative;
+            padding-top: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 900px;
+        }
+
+        .children-group::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 5%;
+            right: 5%;
+            height: 0.8rem;
+            border-left: 2px solid var(--border-color);
+            border-right: 2px solid var(--border-color);
+            border-top: 2px solid var(--border-color);
+        }
+
+        .children-group .person-node::before {
+            content: '';
+            position: absolute;
+            top: -1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 0.8rem;
+            background: var(--border-color);
+        }
+
+        /* Connecting line from parents to children */
+        .couple-unit::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 1.5rem;
+            background: var(--border-color);
+        }
+
+        .person-node {
+            background: var(--aged-paper);
+            border: 2px solid var(--border-color);
+            padding: 0.8rem;
+            min-width: 120px;
+            max-width: 140px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .person-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--shadow);
+            border-color: var(--sepia);
+        }
+
+        .person-node.deceased {
+            opacity: 0.85;
+        }
+
+        .person-node.deceased::after {
+            content: '✝';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 1rem;
+            color: var(--sepia);
+        }
+
+        .person-node.in-vitro::after {
+            content: '✟';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 0.9rem;
+            color: var(--ink-faded);
+        }
+
+        .person-name {
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+            letter-spacing: 0.02em;
+            line-height: 1.2;
+        }
+
+        .person-dates {
+            font-size: 0.7rem;
+            color: var(--ink-faded);
+            font-style: italic;
+            line-height: 1.3;
+        }
+
+        .person-location {
+            font-size: 0.65rem;
+            color: var(--ink-faded);
+            margin-top: 0.2rem;
+        }
+
+        /* Unified lineage section */
+        .unified-lineage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .lineage-divider {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--sepia);
+            margin: 1rem 0;
+        }
+
+        .lineage-note {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--sepia);
+            font-style: italic;
+            margin-bottom: 1rem;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -500px;
+            width: 500px;
+            height: 100vh;
+            background: var(--parchment);
+            border-left: 3px solid var(--border-color);
+            box-shadow: -4px 0 20px var(--shadow);
+            transition: right 0.4s ease;
+            overflow-y: auto;
+            z-index: 1001;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            background: var(--aged-paper);
+            padding: 2rem;
+            border-bottom: 2px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .settings-header h2 {
+            font-size: 1.8rem;
+            font-variant: small-caps;
+            letter-spacing: 0.1em;
+            margin: 0;
+        }
+
+        .close-settings {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--ink-faded);
+            transition: color 0.2s;
+            padding: 0.5rem;
+        }
+
+        .close-settings:hover {
+            color: var(--sepia);
+        }
+
+        .settings-content {
+            padding: 2rem;
+        }
+
+        .settings-section {
+            margin-bottom: 2.5rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+        }
+
+        .settings-section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--ink-dark);
+            font-variant: small-caps;
+            letter-spacing: 0.05em;
+        }
+
+        .settings-btn-full {
+            width: 100%;
+            margin-bottom: 0.75rem;
+            padding: 1rem;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .settings-hint {
+            font-size: 0.85rem;
+            color: var(--ink-faded);
+            font-style: italic;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        /* Dossier Panel */
+        .dossier-panel {
+            position: fixed;
+            top: 0;
+            right: -600px;
+            width: 600px;
+            height: 100vh;
+            background: var(--parchment);
+            border-left: 3px solid var(--border-color);
+            box-shadow: -4px 0 20px var(--shadow);
+            transition: right 0.4s ease;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .dossier-panel.open {
+            right: 0;
+        }
+
+        .dossier-header {
+            background: var(--aged-paper);
+            padding: 2rem;
+            border-bottom: 2px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .close-dossier {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--ink-faded);
+            transition: color 0.2s;
+        }
+
+        .close-dossier:hover {
+            color: var(--sepia);
+        }
+
+        .dossier-title {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            font-variant: small-caps;
+        }
+
+        .dossier-subtitle {
+            font-size: 0.9rem;
+            color: var(--ink-faded);
+            font-style: italic;
+        }
+
+        .dossier-content {
+            padding: 2rem;
+        }
+
+        .dossier-section {
+            margin-bottom: 2.5rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .dossier-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--sepia);
+            letter-spacing: 0.05em;
+            font-variant: small-caps;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 0.7rem;
+            font-size: 0.95rem;
+        }
+
+        .info-label {
+            width: 140px;
+            color: var(--ink-faded);
+            font-weight: bold;
+        }
+
+        .biography {
+            line-height: 1.8;
+            text-align: justify;
+            font-size: 0.95rem;
+        }
+
+        /* Vault View */
+        /* Archive Section Styles */
+        .archive-section {
+            padding: 2rem;
+            background: var(--aged-paper);
+            min-height: 100vh;
+        }
+
+        .archive-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .archive-controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .archive-instructions {
+            background: var(--parchment);
+            padding: 1rem 1.5rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .archive-breadcrumb {
+            padding: 0.75rem 1rem;
+            background: var(--parchment);
+            border: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb-item {
+            color: var(--sepia);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .breadcrumb-item:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb-item.active {
+            color: var(--ink-dark);
+            cursor: default;
+            font-weight: 600;
+        }
+
+        .breadcrumb-item::after {
+            content: ' / ';
+            color: var(--ink-faded);
+            margin: 0 0.5rem;
+        }
+
+        .breadcrumb-item:last-child::after {
+            content: '';
+        }
+
+        .archive-content {
+            background: white;
+            border: 2px solid var(--border-color);
+            min-height: 400px;
+            padding: 2rem;
+        }
+
+        .archive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .archive-item {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--parchment);
+        }
+
+        .archive-item:hover {
+            box-shadow: 0 2px 8px var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .archive-item-icon {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .archive-item-name {
+            text-align: center;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+        }
+
+        .archive-item-type {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--ink-faded);
+            margin-top: 0.25rem;
+        }
+
+        .archive-item.folder .archive-item-icon::before {
+            content: '📁';
+        }
+
+        .archive-item.file .archive-item-icon::before {
+            content: '📄';
+        }
+
+        .archive-item.image .archive-item-icon::before {
+            content: '🖼️';
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--ink-faded);
+        }
+
+        .empty-state-hint {
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        /* Edit View */
+        .edit-form {
+            background: var(--parchment);
+            border: 2px solid var(--border-color);
+            padding: 3rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-title {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-variant: small-caps;
+            letter-spacing: 0.1em;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--ink-faded);
+            font-size: 0.9rem;
+            letter-spacing: 0.03em;
+        }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 0.8rem;
+            font-family: inherit;
+            font-size: 1rem;
+            background: var(--aged-paper);
+            border: 1px solid var(--border-color);
+            color: var(--ink-dark);
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--sepia);
+        }
+
+        .form-textarea {
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn-primary, .btn-secondary {
+            padding: 0.8rem 2rem;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            transition: all 0.3s;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-primary {
+            background: var(--sepia);
+            color: var(--parchment);
+            border-color: var(--sepia);
+        }
+
+        .btn-primary:hover {
+            background: #8b5525;
+        }
+
+        .btn-secondary {
+            background: var(--aged-paper);
+            color: var(--ink-dark);
+        }
+
+        .btn-secondary:hover {
+            background: var(--parchment);
+        }
+
+        /* Tree Builder Styles */
+        .tree-builder {
+            width: 100%;
+            height: calc(100vh - 300px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .builder-header {
+            background: var(--aged-paper);
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .builder-title {
+            font-size: 1.5rem;
+            text-align: center;
+            font-variant: small-caps;
+            letter-spacing: 0.1em;
+            flex: 1;
+        }
+
+        .builder-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-tool {
+            padding: 0.6rem 1.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            background: var(--parchment);
+            border: 2px solid var(--border-color);
+            color: var(--ink-dark);
+            transition: all 0.3s;
+            letter-spacing: 0.03em;
+        }
+
+        .btn-tool:hover {
+            background: var(--sepia);
+            color: var(--parchment);
+            border-color: var(--sepia);
+        }
+
+        .btn-tool.active {
+            background: var(--sepia);
+            color: var(--parchment);
+            border-color: var(--sepia);
+        }
+
+        .mode-indicator {
+            font-size: 0.85rem;
+            color: var(--ink-dark);
+            font-style: italic;
+            padding: 0.5rem 1rem;
+            background: var(--parchment);
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 600px;
+        }
+
+        .grid-canvas {
+            flex: 1;
+            background: var(--parchment);
+            border: 2px solid var(--border-color);
+            position: relative;
+            overflow: auto;
+            cursor: default;
+        }
+
+        .grid-dots {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 50%;
+            opacity: 0.3;
+            transition: all 0.2s;
+            pointer-events: auto;
+        }
+
+        .dot:hover {
+            opacity: 1;
+            background: var(--sepia);
+            transform: scale(1.8);
+        }
+
+        .dot.highlight {
+            opacity: 1;
+            background: var(--sepia);
+            transform: scale(1.5);
+        }
+
+        .connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .person-tiles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .connection-line {
+            cursor: pointer;
+            pointer-events: stroke;
+            stroke-width: 6;
+            transition: stroke-width 0.2s;
+        }
+
+        .connection-line:hover {
+            stroke: var(--sepia) !important;
+            stroke-width: 8;
+        }
+
+        .person-tile {
+            position: absolute;
+            background: var(--aged-paper);
+            border: 2px solid var(--border-color);
+            padding: 0.8rem;
+            width: 140px;
+            height: 90px;
+            text-align: center;
+            box-shadow: 0 2px 8px var(--shadow);
+            pointer-events: auto;
+            z-index: 2;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .person-tile:active {
+            cursor: grabbing;
+        }
+
+        .person-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--shadow);
+            border-color: var(--sepia);
+        }
+
+        .person-tile.selected {
+            border-color: var(--sepia);
+            background: #f8f5eb;
+            box-shadow: 0 4px 16px rgba(112, 66, 20, 0.3);
+            border-width: 3px;
+        }
+
+        .person-tile.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+        }
+
+        .tile-name {
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+            letter-spacing: 0.02em;
+            line-height: 1.1;
+            word-wrap: break-word;
+            width: 100%;
+        }
+
+        .tile-dates {
+            font-size: 0.65rem;
+            color: var(--ink-faded);
+            font-style: italic;
+            line-height: 1.2;
+            word-wrap: break-word;
+            width: 100%;
+        }
+
+        .tile-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            background: var(--sepia);
+            color: var(--parchment);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.7rem;
+            display: none;
+        }
+
+        .person-tile:hover .tile-remove {
+            display: block;
+        }
+
+        /* Data View Styles */
+        .data-section {
+            padding: 2rem;
+            background: var(--aged-paper);
+            min-height: 100vh;
+        }
+
+        .data-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .data-instructions {
+            background: var(--parchment);
+            padding: 1rem 1.5rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .data-instructions strong {
+            color: var(--sepia);
+        }
+
+        .data-table-container {
+            background: white;
+            border: 2px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: inherit;
+            table-layout: auto;
+        }
+
+        .data-table thead {
+            background: var(--parchment);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .data-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--ink-dark);
+            font-variant: small-caps;
+            letter-spacing: 0.05em;
+            border-right: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .data-table th:last-child {
+            border-right: none;
+        }
+
+        .data-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .data-table td:last-child {
+            border-right: none;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--parchment);
+        }
+
+        .draggable-row {
+            cursor: move;
+        }
+
+        .draggable-row:active {
+            cursor: grabbing;
+        }
+
+        .data-table input {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            padding: 0.25rem;
+            font-family: inherit;
+            font-size: inherit;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .data-table input:focus {
+            outline: none;
+            border: 1px solid var(--sepia);
+            background: white;
+        }
+
+        .data-table textarea {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            padding: 0.25rem;
+            font-family: inherit;
+            font-size: inherit;
+            resize: none;
+            line-height: 1.3;
+            overflow: hidden;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .data-table textarea:focus {
+            outline: none;
+            border: 1px solid var(--sepia);
+            background: white;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 3px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-living {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-deceased {
+            background: #efebe9;
+            color: #5d4037;
+        }
+
+        .status-invitro {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .btn-delete {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--ink-faded);
+            padding: 0.25rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: #ffebee;
+            border-color: #c62828;
+            color: #c62828;
+        }
+
+        /* Ornamental Flourishes */
+        .flourish {
+            text-align: center;
+            margin: 2rem 0;
+            color: var(--border-color);
+            font-size: 1.5rem;
+            letter-spacing: 1rem;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--aged-paper);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--sepia);
+        }
+
+        /* Mobile Card View Styles */
+        .card-view {
+            display: none;
+            gap: 1rem;
+        }
+        
+        .person-card {
+            background: white;
+            border: 2px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .person-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .person-card-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--ink-dark);
+            flex: 1;
+        }
+        
+        .person-card .btn-delete {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--ink-faded);
+        }
+        
+        .person-card .btn-delete:hover {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+        
+        .person-card-field {
+            margin-bottom: 0.75rem;
+        }
+        
+        .person-card-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-faded);
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+        
+        .person-card-value {
+            width: 100%;
+        }
+        
+        .person-card-value input,
+        .person-card-value textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--parchment);
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        
+        .person-card-value textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        
+        .mobile-only {
+            display: none;
+        }
+        
+        .data-header-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        /* ================================
+           RESPONSIVE DESIGN - MOBILE & TABLET
+           ================================ */
+        
+        /* Tablet and below (iPad and smaller) */
+        @media screen and (max-width: 1024px) {
+            body {
+                font-size: 15px;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            /* Stack navigation vertically on smaller tablets */
+            nav {
+                flex-wrap: wrap;
+            }
+            
+            .nav-btn {
+                flex: 1 1 calc(33.333% - 0.67rem);
+                min-width: 100px;
+            }
+        }
+        
+        /* Mobile phones (portrait and landscape) */
+        @media screen and (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            
+            .container {
+                padding: 0.5rem;
+            }
+            
+            /* Header adjustments */
+            header {
+                padding: 1rem;
+            }
+            
+            header h1 {
+                font-size: 1.5rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            /* Full-width navigation buttons */
+            nav {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .nav-btn {
+                width: 100%;
+                padding: 0.75rem;
+                font-size: 1rem;
+                min-height: 44px; /* Minimum touch target */
+            }
+            
+            /* Data Table - Show mobile toggle */
+            .mobile-only {
+                display: block;
+            }
+            
+            .btn-tool {
+                min-height: 44px; /* Minimum touch target */
+                padding: 0.75rem 1rem;
+            }
+            
+            .data-section {
+                padding: 0.5rem;
+            }
+            
+            .data-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .data-header-buttons {
+                width: 100%;
+                flex-direction: row;
+                justify-content: space-between;
+            }
+            
+            .data-header h2 {
+                font-size: 1.3rem;
+            }
+            
+            .data-instructions {
+                padding: 0.75rem;
+                font-size: 0.85rem;
+            }
+            
+            .data-table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                position: relative;
+                background: linear-gradient(to right, white 30%, rgba(255,255,255,0)),
+                            linear-gradient(to right, rgba(255,255,255,0), white 70%) 100% 0,
+                            radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.2), rgba(0,0,0,0)),
+                            radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), rgba(0,0,0,0)) 100% 0;
+                background-repeat: no-repeat;
+                background-color: white;
+                background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+                background-attachment: local, local, scroll, scroll;
+            }
+            
+            .data-table {
+                min-width: 800px; /* Force horizontal scroll */
+                font-size: 0.85rem;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 0.5rem;
+                white-space: nowrap;
+            }
+            
+            .data-table textarea,
+            .data-table input {
+                font-size: 0.85rem;
+            }
+            
+            /* Tree Builder */
+            .tree-builder {
+                padding: 0;
+            }
+            
+            .builder-header {
+                padding: 1rem 0.5rem;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .builder-title {
+                font-size: 1.3rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .builder-controls {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
+            }
+            
+            #editingControls {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+            
+            .btn-tool {
+                width: 100%;
+                padding: 0.75rem;
+                font-size: 0.9rem;
+            }
+            
+            .mode-indicator {
+                width: 100%;
+                text-align: center;
+                font-size: 0.8rem;
+            }
+            
+            /* Grid Canvas - Touch-friendly */
+            .grid-canvas {
+                touch-action: pan-x pan-y;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .person-tile {
+                /* Make tiles slightly larger for touch */
+                min-width: 140px;
+                min-height: 90px;
+            }
+            
+            /* Archive */
+            .archive-section {
+                padding: 0.5rem;
+            }
+            
+            .archive-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .archive-controls {
+                width: 100%;
+                flex-direction: column;
+            }
+            
+            .archive-controls .btn-tool {
+                width: 100%;
+            }
+            
+            .archive-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 1rem;
+            }
+            
+            .archive-item {
+                padding: 0.75rem;
+            }
+            
+            .archive-item-icon {
+                font-size: 2rem;
+            }
+            
+            .archive-item-name {
+                font-size: 0.8rem;
+            }
+            
+            /* Settings Panel - Full screen on mobile */
+            .settings-panel {
+                width: 100%;
+                max-width: 100%;
+                border-left: none;
+                border-top: 3px solid var(--border-color);
+            }
+            
+            .settings-panel.open {
+                right: 0;
+            }
+            
+            .settings-btn {
+                top: 1rem;
+                right: 1rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+                min-height: 44px;
+            }
+            
+            .settings-header {
+                padding: 1rem;
+            }
+            
+            .settings-header h2 {
+                font-size: 1.3rem;
+            }
+            
+            .settings-content {
+                padding: 1rem;
+            }
+            
+            .close-settings {
+                font-size: 1.5rem;
+                padding: 0.5rem;
+            }
+            
+            /* Dossier Panel - Full screen on mobile */
+            .dossier-panel {
+                width: 100%;
+                max-width: 100%;
+                border-left: none;
+                border-top: 3px solid var(--border-color);
+            }
+            
+            .dossier-panel.open {
+                right: 0;
+            }
+            
+            .dossier-header {
+                padding: 1rem;
+            }
+            
+            .dossier-title {
+                font-size: 1.3rem;
+            }
+            
+            .dossier-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .dossier-content {
+                padding: 1rem;
+            }
+            
+            .close-dossier {
+                top: 0.5rem;
+                right: 0.5rem;
+                width: 36px;
+                height: 36px;
+                font-size: 1.5rem;
+            }
+        }
+        
+        /* Very small phones */
+        @media screen and (max-width: 480px) {
+            body {
+                font-size: 13px;
+            }
+            
+            header h1 {
+                font-size: 1.3rem;
+            }
+            
+            .data-table {
+                min-width: 600px;
+                font-size: 0.8rem;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 0.4rem;
+            }
+            
+            .builder-title,
+            .section-title {
+                font-size: 1.2rem;
+            }
+            
+            .person-tile {
+                font-size: 0.7rem;
+            }
+            
+            .archive-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+        
+        /* Landscape phones - optimize for horizontal space */
+        @media screen and (max-height: 500px) and (orientation: landscape) {
+            .dossier-panel {
+                max-height: 90vh;
+            }
+            
+            .builder-header {
+                padding: 0.5rem;
+            }
+            
+            .builder-title {
+                margin-bottom: 0.5rem;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            header, nav, .btn-tool, .close-dossier {
+                display: none;
+            }
+            
+            .data-table-container {
+                overflow: visible;
+            }
+            
+            .dossier-panel {
+                position: static;
+                box-shadow: none;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <header>
+        <h1>Woodward Family Tree</h1>
+        <nav>
+            <button class="nav-btn active" data-view="tree">Tree</button>
+            <button class="nav-btn" data-view="vault">Archive</button>
+            <button class="nav-btn" data-view="data">Data</button>
+        </nav>
+        <button class="settings-btn" id="settingsBtn">⚙️ Settings</button>
+    </header>
+
+    <div class="container">
+        <!-- Archival Vault View -->
+        <div id="vault" class="view">
+            <div class="archive-section">
+                <div class="archive-header">
+                    <h2 class="section-title">Family Archive</h2>
+                    <div class="archive-controls">
+                        <button class="btn-tool" id="createFolderBtn">📁 Create Folder</button>
+                        <button class="btn-tool" id="uploadFileBtn">📤 Upload Files</button>
+                    </div>
+                </div>
+                
+                <div class="archive-instructions">
+                    <p><strong>Instructions:</strong> Upload and organize family photos, documents, and other files. Create folders to keep everything organized. Click on folders to navigate, and click on files to view or download them.</p>
+                </div>
+                
+                <div class="archive-breadcrumb" id="archiveBreadcrumb">
+                    <span class="breadcrumb-item active">Archive</span>
+                </div>
+                
+                <div class="archive-content" id="archiveContent">
+                    <div class="empty-state">
+                        <p>📂 No files or folders yet</p>
+                        <p class="empty-state-hint">Click "Upload Files" to add photos, documents, and other files to your family archive</p>
+                    </div>
+                </div>
+                
+                <input type="file" id="fileInput" style="display: none;" multiple>
+            </div>
+        </div>
+
+        <!-- Tree View -->
+        <div id="tree" class="view active">
+            <div class="tree-builder">
+                <div class="builder-header">
+                    <h2 class="builder-title">Family Tree</h2>
+                    <div class="builder-controls">
+                        <div id="editingControls" style="display: none;">
+                            <button class="btn-tool" id="addPersonBtn">+ Add Person</button>
+                            <button class="btn-tool" id="drawLinesBtn">Draw Lines</button>
+                        </div>
+                        <label class="mode-indicator" id="modeIndicator">View Mode</label>
+                    </div>
+                </div>
+                <div class="grid-canvas" id="gridCanvas">
+                    <svg id="connectionsSvg" class="connections-svg"></svg>
+                    <div class="grid-dots" id="gridDots"></div>
+                    <div class="person-tiles" id="personTiles"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data View -->
+        <div id="data" class="view">
+            <div class="data-section">
+                <div class="data-header">
+                    <h2 class="section-title">Family Data Registry</h2>
+                    <div class="data-header-buttons">
+                        <button class="btn-tool mobile-only" id="toggleViewBtn" style="display: none;">📱 Card View</button>
+                        <button class="btn-tool" id="downloadExcelBtn">📥 Download Excel</button>
+                    </div>
+                </div>
+                
+                <div class="data-instructions">
+                    <p><strong>Instructions:</strong> To add a new person to this table, use the "Edit Tree" button in the Tree tab and click "+ Add Person". New entries will appear at the bottom of this table. You can edit any person's information directly in the cells below.</p>
+                    <p class="mobile-hint" style="display: none; margin-top: 0.5rem; color: var(--sepia);"><strong>Mobile Tip:</strong> Swipe left/right to see all columns, or switch to Card View for easier browsing.</p>
+                </div>
+                
+                <!-- Card View (Mobile-friendly) -->
+                <div id="cardView" class="card-view" style="display: none;">
+                    <!-- Cards will be inserted here -->
+                </div>
+                
+                <!-- Table View -->
+                <div class="data-table-container" id="tableView">
+                    <table id="dataTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Birth Date</th>
+                                <th>Birth Place</th>
+                                <th>Death Date</th>
+                                <th>Parents</th>
+                                <th>Spouse</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <!-- Data rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <button class="close-settings" onclick="closeSettings()">✕</button>
+        </div>
+        <div class="settings-content">
+            <div class="settings-section">
+                <h3>Tree Editor</h3>
+                <button class="btn-tool settings-btn-full" id="editTreeBtnSettings">✏️ Edit Tree</button>
+                <p class="settings-hint">Enable editing mode to add people, draw connections, and rearrange the family tree.</p>
+            </div>
+            
+            <div class="settings-section">
+                <h3>Configuration Files</h3>
+                <button class="btn-tool settings-btn-full" id="downloadConfigBtn">💾 Download Configuration File</button>
+                <p class="settings-hint">Save your entire family tree (including positions and connections) to a file.</p>
+                
+                <button class="btn-tool settings-btn-full" id="uploadConfigBtn">📂 Upload Configuration File</button>
+                <input type="file" id="configFileInput" accept=".json" style="display: none;">
+                <p class="settings-hint">Load a previously saved family tree configuration.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dossier Panel -->
+    <div class="dossier-panel" id="dossierPanel">
+        <div class="dossier-header">
+            <button class="close-dossier" onclick="closeDossier()">✕</button>
+            <h2 class="dossier-title" id="dossierName">Timothy Aaron Woodward</h2>
+            <p class="dossier-subtitle" id="dossierDates">April 9, 1972 – Present</p>
+        </div>
+        <div class="dossier-content" id="dossierContent">
+            <div class="dossier-section">
+                <h3 class="section-title">Vital Records</h3>
+                <div class="info-row">
+                    <span class="info-label">Born:</span>
+                    <span>April 9, 1972, Des Moines, Iowa</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span>Living</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Residence:</span>
+                    <span>Indiana</span>
+                </div>
+            </div>
+
+            <div class="dossier-section">
+                <h3 class="section-title">Family Relations</h3>
+                <div class="info-row">
+                    <span class="info-label">Spouse:</span>
+                    <span>Laura Sue (Dickerson) Woodward</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Children:</span>
+                    <span>Titus, Abraham, Jaden, Tirzah, Ezra, Judah, James (deceased), Justice, Levi</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Father:</span>
+                    <span>Arthur Richard Woodward Jr (1941-2021)</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Mother:</span>
+                    <span>Edith Lillian (Larsen) Woodward (1942-2018)</span>
+                </div>
+            </div>
+
+            <div class="dossier-section">
+                <h3 class="section-title">Biographical Notes</h3>
+                <p class="biography">
+                    [Additional biographical information can be added here through the Edit Records section]
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Family Data
+        const familyData = {
+            'tim': {
+                name: 'Timothy Aaron Woodward',
+                dates: 'April 9, 1972 – Present',
+                birth: 'April 9, 1972, Des Moines, Iowa',
+                death: null,
+                spouse: 'Laura Sue (Dickerson) Woodward',
+                parents: 'Titus, Abraham, Jaden, Tirzah, Ezra, Judah, James (deceased), Justice, Levi',
+                parents: 'Arthur Richard Woodward Jr & Edith Lillian (Larsen) Woodward',
+                siblings: 'Brian, Scott, Ethan',
+                biography: 'Additional biographical information to be added.'
+            },
+            'brian': {
+                name: 'Brian Woodward',
+                dates: 'Unknown',
+                parents: 'Arthur Richard Woodward Jr & Edith Lillian (Larsen) Woodward',
+                siblings: 'Scott, Timothy, Ethan',
+                biography: 'Additional biographical information to be added.'
+            },
+            'scott': {
+                name: 'Scott Woodward',
+                dates: 'Unknown',
+                parents: 'Arthur Richard Woodward Jr & Edith Lillian (Larsen) Woodward',
+                siblings: 'Brian, Timothy, Ethan',
+                biography: 'Additional biographical information to be added.'
+            },
+            'ethan': {
+                name: 'Ethan Woodward',
+                dates: 'Unknown',
+                parents: 'Arthur Richard Woodward Jr & Edith Lillian (Larsen) Woodward',
+                siblings: 'Brian, Scott, Timothy',
+                biography: 'Additional biographical information to be added.'
+            },
+            'laura': {
+                name: 'Laura Sue (Dickerson) Woodward',
+                dates: 'June 26, 1975 – Present',
+                birth: 'June 26, 1975, Crawfordsville, Indiana',
+                death: null,
+                spouse: 'Timothy Aaron Woodward',
+                parents: 'Titus, Abraham, Jaden, Tirzah, Ezra, Judah, James (deceased), Justice, Levi',
+                parents: 'Karen Dickerson',
+                siblings: 'Crystal Dickerson',
+                biography: 'Additional biographical information to be added.'
+            },
+            'karen': {
+                name: 'Karen Dickerson',
+                dates: 'Unknown',
+                parents: 'Crystal, Laura Sue',
+                biography: 'Additional biographical information to be added.'
+            },
+            'crystal': {
+                name: 'Crystal Dickerson',
+                dates: 'Unknown',
+                parents: 'Karen Dickerson',
+                siblings: 'Laura Sue Dickerson',
+                biography: 'Additional biographical information to be added.'
+            },
+            'titus': {
+                name: 'Titus Richard Woodward',
+                dates: 'August 30, 1997 – Present',
+                birth: 'August 30, 1997, Washington, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Abraham, Jaden, Tirzah, Ezra, Judah, James (deceased), Justice, Levi',
+                biography: 'Additional biographical information to be added.'
+            },
+            'abraham': {
+                name: 'Abraham Kenneth Woodward',
+                dates: 'April 24, 1999 – Present',
+                birth: 'April 24, 1999, Washington, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Jaden, Tirzah, Ezra, Judah, James (deceased), Justice, Levi',
+                biography: 'Additional biographical information to be added.'
+            },
+            'jaden': {
+                name: 'Jaden Gray Woodward',
+                dates: 'May 28, 2001 – Present',
+                birth: 'May 28, 2001, Terre Haute, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Abraham, Tirzah, Ezra, Judah, James (deceased), Justice, Levi',
+                biography: 'Additional biographical information to be added.'
+            },
+            'tirzah': {
+                name: 'Tirzah Joy Woodward',
+                dates: 'January 23, 2003 – Present',
+                birth: 'January 23, 2003, Terre Haute, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Abraham, Jaden, Ezra, Judah, James (deceased), Justice, Levi',
+                biography: 'Additional biographical information to be added.'
+            },
+            'ezra': {
+                name: 'Ezra Arthur Woodward',
+                dates: 'September 28, 2004 – Present',
+                birth: 'September 28, 2004, Terre Haute, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Abraham, Jaden, Tirzah, Judah, James (deceased), Justice, Levi',
+                biography: 'Additional biographical information to be added.'
+            },
+            'judah': {
+                name: 'Judah Aaron Woodward',
+                dates: 'August 4, 2006 – Present',
+                birth: 'August 4, 2006, Terre Haute, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Abraham, Jaden, Tirzah, Ezra, James (deceased), Justice, Levi',
+                biography: 'Additional biographical information to be added.'
+            },
+            'james': {
+                name: 'James Rain Woodward',
+                dates: 'October 24, 2007',
+                birth: null,
+                death: 'Died in vitro (13 weeks) on October 24, 2007, Eldersburg, Maryland',
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Abraham, Jaden, Tirzah, Ezra, Judah, Justice, Levi',
+                biography: 'James Rain Woodward was carried for 13 weeks before being called home to the Lord.'
+            },
+            'justice': {
+                name: 'Justice Courage Woodward',
+                dates: 'August 19, 2008 – Present',
+                birth: 'August 19, 2008, Bloomington, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Abraham, Jaden, Tirzah, Ezra, Judah, James (deceased), Levi',
+                biography: 'Additional biographical information to be added.'
+            },
+            'levi': {
+                name: 'Levi Hunter Woodward',
+                dates: 'June 21, 2010 – Present',
+                birth: 'June 21, 2010, Bloomington, Indiana',
+                death: null,
+                parents: 'Timothy Aaron Woodward & Laura Sue (Dickerson) Woodward',
+                siblings: 'Titus, Abraham, Jaden, Tirzah, Ezra, Judah, James (deceased), Justice',
+                biography: 'Additional biographical information to be added.'
+            },
+            'arthur_jr': {
+                name: 'Arthur Richard Woodward Jr',
+                dates: 'January 12, 1941 – March 28, 2021',
+                birth: 'January 12, 1941, Mattatuck, New York',
+                death: 'March 28, 2021, IU Health Hospital, Bedford, Indiana',
+                spouse: 'Edith Lillian (Larsen) Woodward',
+                parents: 'Brian, Scott, Timothy, Ethan',
+                parents: 'Arthur Richard Woodward Sr & Lydia Marie (Regula) Woodward',
+                siblings: 'Thomas Woodward, Mary Ellen Woodward',
+                biography: 'Additional biographical information to be added.'
+            },
+            'edith': {
+                name: 'Edith Lillian (Larsen) Woodward',
+                dates: 'July 27, 1942 – September 26, 2018',
+                birth: 'July 27, 1942, Methodist State Hospital, Mitchell, South Dakota',
+                death: 'September 26, 2018, Westview Nursing Home, Bedford, Indiana',
+                spouse: 'Arthur Richard Woodward Jr',
+                parents: 'Brian, Scott, Timothy, Ethan',
+                parents: 'Kenneth F Larsen & Alice E (Van Metre) Larsen',
+                siblings: 'Thad Larsen, Ralph Larsen, Maurine (Larsen) Purdy',
+                biography: 'Additional biographical information to be added.'
+            },
+            'arthur_sr': {
+                name: 'Arthur Richard Woodward Sr',
+                dates: 'Deceased',
+                spouse: 'Lydia Marie (Regula) Woodward',
+                parents: 'Thomas, Arthur Richard Jr, Mary Ellen',
+                biography: 'Additional biographical information to be added.'
+            },
+            'lydia': {
+                name: 'Lydia Marie (Regula) Woodward',
+                dates: 'Deceased',
+                spouse: 'Arthur Richard Woodward Sr',
+                parents: 'Thomas, Arthur Richard Jr, Mary Ellen',
+                biography: 'Additional biographical information to be added.'
+            },
+            'kenneth_larsen': {
+                name: 'Kenneth F Larsen',
+                dates: 'Deceased',
+                birth: 'Hope, Idaho',
+                spouse: 'Alice E (Van Metre) Larsen, later Gladys Larsen',
+                parents: 'Thad, Ralph, Edith Lillian, Maurine',
+                biography: 'Additional biographical information to be added.'
+            },
+            'alice': {
+                name: 'Alice E (Van Metre) Larsen',
+                dates: 'Deceased',
+                birth: 'Fedora, South Dakota',
+                spouse: 'Kenneth F Larsen',
+                parents: 'Thad, Ralph, Edith Lillian, Maurine',
+                death: 'Died while Edith was still at home',
+                biography: 'Additional biographical information to be added.'
+            },
+            'thomas_woodward': {
+                name: 'Thomas Woodward',
+                dates: 'February 19xx',
+                parents: 'Arthur Richard Woodward Sr & Lydia Marie (Regula) Woodward',
+                siblings: 'Arthur Richard Jr, Mary Ellen',
+                biography: 'Additional biographical information to be added.'
+            },
+            'mary_ellen': {
+                name: 'Mary Ellen Woodward',
+                dates: 'Unknown',
+                parents: 'Arthur Richard Woodward Sr & Lydia Marie (Regula) Woodward',
+                siblings: 'Thomas, Arthur Richard Jr',
+                biography: 'Additional biographical information to be added.'
+            },
+            'thad_larsen': {
+                name: 'Thad Larsen',
+                dates: 'Unknown',
+                parents: 'Kenneth F Larsen & Alice E (Van Metre) Larsen',
+                siblings: 'Ralph, Edith Lillian, Maurine',
+                biography: 'Additional biographical information to be added.'
+            },
+            'ralph_larsen': {
+                name: 'Ralph Larsen',
+                dates: 'Unknown',
+                parents: 'Kenneth F Larsen & Alice E (Van Metre) Larsen',
+                siblings: 'Thad, Edith Lillian, Maurine',
+                biography: 'Additional biographical information to be added.'
+            },
+            'maurine': {
+                name: 'Maurine (Larsen) Purdy',
+                dates: 'Deceased',
+                parents: 'Kenneth F Larsen & Alice E (Van Metre) Larsen',
+                siblings: 'Thad, Ralph, Edith Lillian',
+                biography: 'Additional biographical information to be added.'
+            }
+        };
+
+        // Helper function to switch to tree view
+        function switchToTreeView() {
+            const navBtns = document.querySelectorAll('.nav-btn');
+            const views = document.querySelectorAll('.view');
+            
+            navBtns.forEach(b => b.classList.remove('active'));
+            views.forEach(v => v.classList.remove('active'));
+            
+            const treeBtn = document.querySelector('.nav-btn[data-view="tree"]');
+            const treeView = document.getElementById('tree');
+            
+            if (treeBtn) treeBtn.classList.add('active');
+            if (treeView) treeView.classList.add('active');
+            
+            if (!gridInitialized) {
+                initializeGrid();
+            }
+        }
+
+        // Navigation
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const views = document.querySelectorAll('.view');
+
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetView = btn.dataset.view;
+                
+                navBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                views.forEach(v => v.classList.remove('active'));
+                document.getElementById(targetView).classList.add('active');
+
+                // Initialize grid when switching to tree view
+                if (targetView === 'tree' && !gridInitialized) {
+                    initializeGrid();
+                }
+                
+                // Populate data table when switching to data view
+                if (targetView === 'data') {
+                    populateDataTable();
+                }
+            });
+        });
+
+        // Tree Builder Variables
+        let gridInitialized = false;
+        let editMode = false;
+        let drawLinesMode = false;
+        let selectedForLine = [];
+        let selectedPersons = [];
+        let connections = [];
+        let persons = [];
+        let nextPersonId = 1;
+        let selectedTile = null;
+        const GRID_SIZE = 40;
+        let CANVAS_WIDTH = 2000;
+        let CANVAS_HEIGHT = 1500;
+        const EXPANSION_MARGIN = 100; // How close to edge before expanding - reduced for less aggressive expansion
+        let canvasOffsetX = 0; // Track how much we've shifted left
+        let canvasOffsetY = 0; // Track how much we've shifted up
+        let lastExpansionTime = 0; // Track when we last expanded
+        const EXPANSION_COOLDOWN = 1000; // 1 second cooldown between expansions
+
+        // Pre-load family members
+        const initialFamily = [
+            { 
+                name: 'Timothy Aaron Woodward', 
+                birthDate: 'April 9, 1972',
+                birthPlace: 'Des Moines, IA',
+                deathDate: '',
+                parents: 'Arthur Richard Woodward Jr\nEdith Lillian (Larsen) Woodward',
+                spouse: 'Laura Sue (Dickerson) Woodward',
+                notes: ''
+            },
+            { 
+                name: 'Laura Sue (Dickerson) Woodward', 
+                birthDate: 'June 26, 1975',
+                birthPlace: 'Crawfordsville, IN',
+                deathDate: '',
+                parents: '',
+                spouse: 'Timothy Aaron Woodward',
+                notes: ''
+            },
+            { 
+                name: 'Titus Richard Woodward', 
+                birthDate: 'August 30, 1997',
+                birthPlace: 'Washington, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'Abraham Kenneth Woodward', 
+                birthDate: 'April 24, 1999',
+                birthPlace: 'Washington, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'Jaden Gray Woodward', 
+                birthDate: 'May 28, 2001',
+                birthPlace: 'Terre Haute, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'Tirzah Joy Woodward', 
+                birthDate: 'January 23, 2003',
+                birthPlace: 'Terre Haute, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'Ezra Arthur Woodward', 
+                birthDate: 'September 28, 2004',
+                birthPlace: 'Terre Haute, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'Judah Aaron Woodward', 
+                birthDate: 'August 4, 2006',
+                birthPlace: 'Terre Haute, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'James Rain Woodward', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: 'October 24, 2007',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: 'Died in vitro (13 weeks) in Eldersburg, MD',
+                deceased: true,
+                inVitro: true
+            },
+            { 
+                name: 'Justice Courage Woodward', 
+                birthDate: 'August 19, 2008',
+                birthPlace: 'Bloomington, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'Levi Hunter Woodward', 
+                birthDate: 'June 21, 2010',
+                birthPlace: 'Bloomington, IN',
+                deathDate: '',
+                parents: 'Timothy Aaron Woodward\nLaura Sue (Dickerson) Woodward',
+                spouse: '',
+                notes: ''
+            },
+            { 
+                name: 'Arthur Richard Woodward Jr', 
+                birthDate: 'January 12, 1941',
+                birthPlace: 'Mattatuck, NY',
+                deathDate: 'March 28, 2021',
+                parents: 'Arthur Richard Woodward Sr\nLydia Marie (Regula) Woodward',
+                spouse: 'Edith Lillian (Larsen) Woodward',
+                notes: "Tim's dad. Died at IU Health Hospital Bedford, IN",
+                deceased: true
+            },
+            { 
+                name: 'Arthur Richard Woodward Sr', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: '',
+                parents: '',
+                spouse: 'Lydia Marie (Regula) Woodward',
+                notes: "Tim's paternal grandfather. Deceased",
+                deceased: true
+            },
+            { 
+                name: 'Lydia Marie (Regula) Woodward', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: '',
+                parents: '',
+                spouse: 'Arthur Richard Woodward Sr',
+                notes: "Tim's paternal grandmother. Deceased",
+                deceased: true
+            },
+            { 
+                name: 'Thomas Woodward', 
+                birthDate: 'February ??, 19??',
+                birthPlace: '',
+                deathDate: '',
+                parents: 'Arthur Richard Woodward Sr\nLydia Marie (Regula) Woodward',
+                spouse: '',
+                notes: "Tim's uncle (Arthur's brother)"
+            },
+            { 
+                name: 'Mary Ellen (Woodward) ???', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: '',
+                parents: 'Arthur Richard Woodward Sr\nLydia Marie (Regula) Woodward',
+                spouse: '',
+                notes: "Tim's aunt (Arthur's sister)"
+            },
+            { 
+                name: 'Edith Lillian (Larsen) Woodward', 
+                birthDate: 'July 27, 1942',
+                birthPlace: 'Methodist State Hospital, Mitchell, SD',
+                deathDate: 'September 26, 2018',
+                parents: 'Kenneth F Larsen\nAlice E (Van Metre) Larsen',
+                spouse: 'Arthur Richard Woodward Jr',
+                notes: "Tim's mom. Died at Westview Nursing Home, Bedford, IN",
+                deceased: true
+            },
+            { 
+                name: 'Kenneth F Larsen', 
+                birthDate: '',
+                birthPlace: 'Hope, ID',
+                deathDate: '',
+                parents: '',
+                spouse: 'Alice E (Van Metre) Larsen\nGladys Larsen',
+                notes: "Tim's maternal grandfather. Deceased",
+                deceased: true
+            },
+            { 
+                name: 'Alice E (Van Metre) Larsen', 
+                birthDate: '',
+                birthPlace: 'Fedora, SD',
+                deathDate: '',
+                parents: '',
+                spouse: 'Kenneth F Larsen',
+                notes: "Tim's maternal grandmother. Died when Edith was still at home",
+                deceased: true
+            },
+            { 
+                name: 'Gladys (??) Larsen', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: '',
+                parents: '',
+                spouse: 'Kenneth F Larsen',
+                notes: "Tim's maternal step-grandmother. Deceased",
+                deceased: true
+            },
+            { 
+                name: 'Thad (not sure if official name) Larsen', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: '',
+                parents: 'Kenneth F Larsen\nAlice E (Van Metre) Larsen',
+                spouse: '',
+                notes: "Tim's uncle (Edith's brother)"
+            },
+            { 
+                name: 'Ralph Larsen', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: '',
+                parents: 'Kenneth F Larsen\nAlice E (Van Metre) Larsen',
+                spouse: '',
+                notes: "Tim's uncle (Edith's brother)"
+            },
+            { 
+                name: 'Maurine (spelling?) (Larsen) Purdy', 
+                birthDate: '',
+                birthPlace: '',
+                deathDate: '',
+                parents: 'Kenneth F Larsen\nAlice E (Van Metre) Larsen',
+                spouse: '',
+                notes: "Tim's aunt (Edith's sister). Deceased",
+                deceased: true
+            }
+        ];
+
+        // Trim canvas to fit all tiles with padding
+        function trimCanvasToContent() {
+            if (persons.length === 0) return;
+            
+            // Find the bounding box of all tiles
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+            
+            persons.forEach(person => {
+                if (person.x < minX) minX = person.x;
+                if (person.y < minY) minY = person.y;
+                if (person.x > maxX) maxX = person.x;
+                if (person.y > maxY) maxY = person.y;
+            });
+            
+            // Add padding around the content
+            const padding = 200;
+            const tileWidth = 140;
+            const tileHeight = 90;
+            
+            // Calculate new canvas size with padding
+            const newMinX = Math.max(0, minX - padding);
+            const newMinY = Math.max(0, minY - padding);
+            const newMaxX = maxX + tileWidth + padding;
+            const newMaxY = maxY + tileHeight + padding;
+            
+            // Calculate how much we need to shift (if newMin > 0)
+            const shiftX = newMinX;
+            const shiftY = newMinY;
+            
+            // Calculate new canvas dimensions (aligned to grid)
+            const newWidth = Math.ceil((newMaxX - newMinX) / GRID_SIZE) * GRID_SIZE;
+            const newHeight = Math.ceil((newMaxY - newMinY) / GRID_SIZE) * GRID_SIZE;
+            
+            // Only trim if we're actually reducing size or shifting origin
+            if (newWidth < CANVAS_WIDTH || newHeight < CANVAS_HEIGHT || shiftX > 0 || shiftY > 0) {
+                // Shift all tiles if we're moving the origin
+                if (shiftX > 0 || shiftY > 0) {
+                    persons.forEach(person => {
+                        person.x -= shiftX;
+                        person.y -= shiftY;
+                        
+                        const tile = document.querySelector(`[data-id="${person.id}"]`);
+                        if (tile) {
+                            tile.style.left = `${person.x - 70}px`;
+                            tile.style.top = `${person.y - 45}px`;
+                        }
+                    });
+                }
+                
+                // Update canvas dimensions
+                CANVAS_WIDTH = newWidth;
+                CANVAS_HEIGHT = newHeight;
+                
+                const connectionsSvg = document.getElementById('connectionsSvg');
+                const gridDots = document.getElementById('gridDots');
+                const personTiles = document.getElementById('personTiles');
+                
+                // Update all layer sizes
+                connectionsSvg.setAttribute('width', CANVAS_WIDTH);
+                connectionsSvg.setAttribute('height', CANVAS_HEIGHT);
+                gridDots.style.width = CANVAS_WIDTH + 'px';
+                gridDots.style.height = CANVAS_HEIGHT + 'px';
+                personTiles.style.width = CANVAS_WIDTH + 'px';
+                personTiles.style.height = CANVAS_HEIGHT + 'px';
+                
+                // Regenerate grid dots
+                regenerateGridDots();
+                
+                // Redraw connections with new positions
+                redrawConnections();
+            }
+        }
+
+        // Fit canvas to all tiles
+        function fitCanvasToTiles() {
+            if (persons.length === 0) return;
+            
+            // Find the maximum x and y coordinates
+            let maxX = 0;
+            let maxY = 0;
+            
+            persons.forEach(person => {
+                if (person.x > maxX) maxX = person.x;
+                if (person.y > maxY) maxY = person.y;
+            });
+            
+            // Add padding
+            const padding = 300;
+            const requiredWidth = maxX + padding;
+            const requiredHeight = maxY + padding;
+            
+            // Only expand if needed
+            let needsResize = false;
+            if (requiredWidth > CANVAS_WIDTH) {
+                CANVAS_WIDTH = Math.ceil(requiredWidth / GRID_SIZE) * GRID_SIZE;
+                needsResize = true;
+            }
+            if (requiredHeight > CANVAS_HEIGHT) {
+                CANVAS_HEIGHT = Math.ceil(requiredHeight / GRID_SIZE) * GRID_SIZE;
+                needsResize = true;
+            }
+            
+            if (needsResize) {
+                const connectionsSvg = document.getElementById('connectionsSvg');
+                const gridDots = document.getElementById('gridDots');
+                const personTiles = document.getElementById('personTiles');
+                
+                regenerateGridDots();
+                
+                connectionsSvg.setAttribute('width', CANVAS_WIDTH);
+                connectionsSvg.setAttribute('height', CANVAS_HEIGHT);
+                gridDots.style.width = CANVAS_WIDTH + 'px';
+                gridDots.style.height = CANVAS_HEIGHT + 'px';
+                personTiles.style.width = CANVAS_WIDTH + 'px';
+                personTiles.style.height = CANVAS_HEIGHT + 'px';
+                
+                gridDots.style.display = editMode ? 'block' : 'none';
+            }
+        }
+
+        // Initialize Grid
+        function initializeGrid() {
+            const gridDots = document.getElementById('gridDots');
+            const gridCanvas = document.getElementById('gridCanvas');
+            const connectionsSvg = document.getElementById('connectionsSvg');
+            const personTiles = document.getElementById('personTiles');
+            
+            // Set initial sizes for all layers
+            connectionsSvg.setAttribute('width', CANVAS_WIDTH);
+            connectionsSvg.setAttribute('height', CANVAS_HEIGHT);
+            gridDots.style.width = CANVAS_WIDTH + 'px';
+            gridDots.style.height = CANVAS_HEIGHT + 'px';
+            personTiles.style.width = CANVAS_WIDTH + 'px';
+            personTiles.style.height = CANVAS_HEIGHT + 'px';
+            
+            // Create grid dots
+            regenerateGridDots();
+
+            // Load initial family members scattered across canvas
+            initialFamily.forEach((member, index) => {
+                const row = Math.floor(index / 5);
+                const col = index % 5;
+                const x = 200 + (col * 200);
+                const y = 100 + (row * 120);
+                addPerson(member.name, member.dates || '', x, y, member.deceased, member.inVitro, {
+                    birthDate: member.birthDate,
+                    birthPlace: member.birthPlace,
+                    deathDate: member.deathDate,
+                    spouse: member.spouse,
+                    parents: member.parents,
+                    notes: member.notes
+                });
+            });
+
+            // Fit canvas to tiles after loading
+            fitCanvasToTiles();
+
+            gridInitialized = true;
+            setupTreeBuilderEvents();
+        }
+
+        // Regenerate all grid dots based on current canvas size
+        function regenerateGridDots() {
+            const gridDots = document.getElementById('gridDots');
+            gridDots.innerHTML = ''; // Clear existing dots
+            
+            for (let y = 0; y < CANVAS_HEIGHT; y += GRID_SIZE) {
+                for (let x = 0; x < CANVAS_WIDTH; x += GRID_SIZE) {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.style.left = `${x}px`;
+                    dot.style.top = `${y}px`;
+                    dot.dataset.x = x;
+                    dot.dataset.y = y;
+                    gridDots.appendChild(dot);
+                }
+            }
+        }
+
+        // Check if canvas needs to expand based on position
+        // Trim canvas to fit all tiles with minimal padding
+        function trimCanvasToFit() {
+            if (persons.length === 0) return;
+            
+            // Find min and max coordinates
+            let minX = Infinity, minY = Infinity;
+            let maxX = -Infinity, maxY = -Infinity;
+            
+            persons.forEach(person => {
+                if (person.x < minX) minX = person.x;
+                if (person.y < minY) minY = person.y;
+                if (person.x > maxX) maxX = person.x;
+                if (person.y > maxY) maxY = person.y;
+            });
+            
+            // Add minimal padding
+            const padding = 200;
+            const shiftX = Math.max(0, padding - minX);
+            const shiftY = Math.max(0, padding - minY);
+            
+            // Shift all tiles if needed
+            if (shiftX > 0 || shiftY > 0) {
+                persons.forEach(person => {
+                    person.x += shiftX;
+                    person.y += shiftY;
+                    
+                    const tile = document.querySelector(`[data-id="${person.id}"]`);
+                    if (tile) {
+                        tile.style.left = `${person.x - 70}px`;
+                        tile.style.top = `${person.y - 45}px`;
+                    }
+                });
+            }
+            
+            // Recalculate max after shift
+            maxX += shiftX;
+            maxY += shiftY;
+            
+            // Set new canvas size with padding
+            const newWidth = Math.ceil((maxX + padding) / GRID_SIZE) * GRID_SIZE;
+            const newHeight = Math.ceil((maxY + padding) / GRID_SIZE) * GRID_SIZE;
+            
+            // Only resize if significantly different
+            if (Math.abs(newWidth - CANVAS_WIDTH) > GRID_SIZE * 5 || 
+                Math.abs(newHeight - CANVAS_HEIGHT) > GRID_SIZE * 5) {
+                
+                CANVAS_WIDTH = newWidth;
+                CANVAS_HEIGHT = newHeight;
+                
+                const connectionsSvg = document.getElementById('connectionsSvg');
+                const gridDots = document.getElementById('gridDots');
+                const personTiles = document.getElementById('personTiles');
+                
+                regenerateGridDots();
+                
+                connectionsSvg.setAttribute('width', CANVAS_WIDTH);
+                connectionsSvg.setAttribute('height', CANVAS_HEIGHT);
+                gridDots.style.width = CANVAS_WIDTH + 'px';
+                gridDots.style.height = CANVAS_HEIGHT + 'px';
+                personTiles.style.width = CANVAS_WIDTH + 'px';
+                personTiles.style.height = CANVAS_HEIGHT + 'px';
+                
+                gridDots.style.display = editMode ? 'block' : 'none';
+                redrawConnections();
+            }
+        }
+
+        // Check if canvas needs to expand based on position
+        function checkAndExpandCanvas(x, y) {
+            // Check cooldown - prevent expansion if less than 1 second since last expansion
+            const now = Date.now();
+            if (now - lastExpansionTime < EXPANSION_COOLDOWN) {
+                return { shiftX: 0, shiftY: 0 }; // Don't expand yet
+            }
+            
+            let expanded = false;
+            let shiftX = 0;
+            let shiftY = 0;
+            
+            const connectionsSvg = document.getElementById('connectionsSvg');
+            const gridDots = document.getElementById('gridDots');
+            const personTiles = document.getElementById('personTiles');
+            
+            const minMargin = GRID_SIZE; // Minimum margin from edge
+            
+            // Check left edge - need to shift everything right and expand
+            if (x < minMargin) {
+                const expansionAmount = 400; // Reduced from 800
+                CANVAS_WIDTH += expansionAmount;
+                shiftX = expansionAmount;
+                expanded = true;
+            }
+            
+            // Check top edge - need to shift everything down and expand
+            if (y < minMargin) {
+                const expansionAmount = 400; // Reduced from 600
+                CANVAS_HEIGHT += expansionAmount;
+                shiftY = expansionAmount;
+                expanded = true;
+            }
+            
+            // Check right edge
+            if (x > CANVAS_WIDTH - EXPANSION_MARGIN) {
+                CANVAS_WIDTH += 400; // Reduced from 800
+                expanded = true;
+            }
+            
+            // Check bottom edge
+            if (y > CANVAS_HEIGHT - EXPANSION_MARGIN) {
+                CANVAS_HEIGHT += 400; // Reduced from 600
+                expanded = true;
+            }
+            
+            // If we need to shift tiles (expanding left or up)
+            if (shiftX > 0 || shiftY > 0) {
+                // Shift all person positions
+                persons.forEach(person => {
+                    person.x += shiftX;
+                    person.y += shiftY;
+                    
+                    // Update tile position
+                    const tile = document.querySelector(`[data-id="${person.id}"]`);
+                    if (tile) {
+                        tile.style.left = `${person.x - 70}px`;
+                        tile.style.top = `${person.y - 45}px`;
+                    }
+                });
+            }
+            
+            // Regenerate grid dots and update sizes if expanded
+            if (expanded) {
+                lastExpansionTime = now; // Update expansion timestamp
+                
+                regenerateGridDots();
+                
+                // Update all layer sizes
+                connectionsSvg.setAttribute('width', CANVAS_WIDTH);
+                connectionsSvg.setAttribute('height', CANVAS_HEIGHT);
+                gridDots.style.width = CANVAS_WIDTH + 'px';
+                gridDots.style.height = CANVAS_HEIGHT + 'px';
+                personTiles.style.width = CANVAS_WIDTH + 'px';
+                personTiles.style.height = CANVAS_HEIGHT + 'px';
+                
+                // Show/hide dots based on edit mode
+                gridDots.style.display = editMode ? 'block' : 'none';
+                
+                // Always redraw connections when canvas expands (lines need to update)
+                redrawConnections();
+            }
+            
+            return { shiftX, shiftY };
+        }
+
+        // Setup Tree Builder Events
+        function setupTreeBuilderEvents() {
+            const gridCanvas = document.getElementById('gridCanvas');
+            const editTreeBtn = document.getElementById('editTreeBtnSettings');
+            const addPersonBtn = document.getElementById('addPersonBtn');
+            const drawLinesBtn = document.getElementById('drawLinesBtn');
+            const modeIndicator = document.getElementById('modeIndicator');
+            const editingControls = document.getElementById('editingControls');
+            const gridDots = document.getElementById('gridDots');
+
+            // Hide dots by default (view mode)
+            gridDots.style.display = 'none';
+
+            // Edit Tree Button - Toggle edit mode (now in settings panel)
+            if (editTreeBtn) {
+                editTreeBtn.addEventListener('click', () => {
+                    editMode = !editMode;
+                    editTreeBtn.classList.toggle('active');
+                    
+                    // Close settings panel when toggling edit mode
+                    closeSettings();
+                    
+                    if (editMode) {
+                        // Enter edit mode
+                        editingControls.style.display = 'flex';
+                        editingControls.style.gap = '1rem';
+                        gridDots.style.display = 'block';
+                        modeIndicator.textContent = 'Edit Mode';
+                        
+                        // Enable tile dragging
+                        document.querySelectorAll('.person-tile').forEach(tile => {
+                            tile.style.cursor = 'grab';
+                        });
+                    } else {
+                        // Exit edit mode
+                        editingControls.style.display = 'none';
+                        gridDots.style.display = 'none';
+                        drawLinesMode = false;
+                        drawLinesBtn.classList.remove('active');
+                        modeIndicator.textContent = 'View Mode';
+                        
+                        // Disable tile dragging
+                        document.querySelectorAll('.person-tile').forEach(tile => {
+                            tile.style.cursor = 'pointer';
+                            tile.classList.remove('selected');
+                        });
+                        selectedPersons = [];
+                        selectedForLine = [];
+                        
+                        // Trim canvas to remove excessive unused space
+                        trimCanvasToContent();
+                    }
+                });
+            }
+
+            // Add Person Button - Attach blank tile to cursor
+            addPersonBtn.addEventListener('click', () => {
+                modeIndicator.textContent = 'Add Person';
+                
+                // Create ghost tile that follows cursor
+                const ghostTile = document.createElement('div');
+                ghostTile.className = 'person-tile';
+                ghostTile.style.position = 'fixed';
+                ghostTile.style.pointerEvents = 'none';
+                ghostTile.style.opacity = '0.7';
+                ghostTile.style.zIndex = '10000';
+                ghostTile.style.width = '140px';
+                ghostTile.style.height = '90px';
+                ghostTile.innerHTML = `
+                    <div class="tile-name">New Person</div>
+                    <div class="tile-dates"></div>
+                `;
+                document.body.appendChild(ghostTile);
+                
+                let lastSnapX = 200; // Default position
+                let lastSnapY = 200;
+                let isActive = true;
+                
+                const moveHandler = (e) => {
+                    if (!isActive) return;
+                    
+                    const canvas = document.getElementById('gridCanvas');
+                    const canvasRect = canvas.getBoundingClientRect();
+                    
+                    // Calculate canvas-relative position
+                    let canvasX = e.clientX - canvasRect.left + canvas.scrollLeft;
+                    let canvasY = e.clientY - canvasRect.top + canvas.scrollTop;
+                    
+                    // Snap to grid
+                    let snapX = Math.round(canvasX / GRID_SIZE) * GRID_SIZE;
+                    let snapY = Math.round(canvasY / GRID_SIZE) * GRID_SIZE;
+                    
+                    lastSnapX = snapX;
+                    lastSnapY = snapY;
+                    
+                    // Convert back to screen coordinates for ghost tile positioning
+                    let screenX = snapX - canvas.scrollLeft + canvasRect.left;
+                    let screenY = snapY - canvas.scrollTop + canvasRect.top;
+                    
+                    ghostTile.style.left = `${screenX - 70}px`;
+                    ghostTile.style.top = `${screenY - 45}px`;
+                };
+                
+                const cleanup = () => {
+                    isActive = false;
+                    if (document.body.contains(ghostTile)) {
+                        document.body.removeChild(ghostTile);
+                    }
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('click', clickHandler);
+                };
+                
+                const clickHandler = (e) => {
+                    if (!isActive) return;
+                    
+                    // Use the last snapped position
+                    const x = lastSnapX;
+                    const y = lastSnapY;
+                    
+                    console.log('Placing tile at:', x, y, 'editMode:', editMode); // Debug
+                    
+                    // Clean up first
+                    cleanup();
+                    
+                    // Create person immediately without prompts
+                    console.log('Creating person at:', x, y); // Debug
+                    addPerson('New Person', '', x, y);
+                    
+                    // Restore mode
+                    if (drawLinesMode) {
+                        modeIndicator.textContent = 'Draw Lines Mode';
+                    } else {
+                        modeIndicator.textContent = 'Edit Mode';
+                    }
+                };
+                
+                // Start tracking immediately
+                document.addEventListener('mousemove', moveHandler);
+                // Use timeout to avoid capturing the button click
+                setTimeout(() => {
+                    if (isActive) {
+                        document.addEventListener('click', clickHandler);
+                    }
+                }, 150);
+            });
+
+            // Draw Lines Button
+            drawLinesBtn.addEventListener('click', () => {
+                drawLinesMode = !drawLinesMode;
+                drawLinesBtn.classList.toggle('active');
+                selectedForLine = [];
+                
+                // Clear any line selection highlights
+                document.querySelectorAll('.person-tile').forEach(tile => {
+                    tile.style.outline = 'none';
+                });
+                
+                if (drawLinesMode) {
+                    modeIndicator.textContent = 'Draw Lines Mode: Click two tiles to connect them • Click any line to delete it • Click "Draw Lines" again to exit';
+                    gridCanvas.style.cursor = 'crosshair';
+                } else {
+                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Double-click to edit details';
+                    gridCanvas.style.cursor = 'default';
+                }
+            });
+        }
+
+        // Add Person
+        function addPerson(name, dates, x, y, deceased = false, inVitro = false, extraData = {}) {
+            console.log('addPerson called with:', name, dates, x, y); // Debug
+            
+            // Check if canvas needs to expand for this position (before snapping)
+            const shift = checkAndExpandCanvas(x, y);
+            
+            // Adjust position if canvas was shifted
+            x += shift.shiftX;
+            y += shift.shiftY;
+            
+            const id = `person_${nextPersonId++}`;
+            const person = {
+                id: id,
+                name: name,
+                dates: dates,
+                birthDate: extraData.birthDate || '',
+                birthPlace: extraData.birthPlace || '',
+                deathDate: extraData.deathDate || '',
+                spouse: extraData.spouse || '',
+                parents: extraData.parents || '',
+                notes: extraData.notes || '',
+                x: Math.round(x / GRID_SIZE) * GRID_SIZE,
+                y: Math.round(y / GRID_SIZE) * GRID_SIZE,
+                deceased: deceased,
+                inVitro: inVitro
+            };
+            
+            console.log('Person object created:', person); // Debug
+            
+            persons.push(person);
+            renderPerson(person);
+            
+            // Trim canvas to fit after adding
+            setTimeout(() => trimCanvasToFit(), 100);
+        }
+
+        // Render Person
+        function renderPerson(person) {
+            console.log('renderPerson called with:', person); // Debug
+            
+            const personTiles = document.getElementById('personTiles');
+            console.log('personTiles element:', personTiles); // Debug
+            
+            if (!personTiles) {
+                console.error('personTiles element not found!');
+                return;
+            }
+            
+            const tile = document.createElement('div');
+            tile.className = 'person-tile';
+            if (person.deceased) tile.classList.add('deceased');
+            if (person.inVitro) tile.classList.add('in-vitro');
+            tile.dataset.id = person.id;
+            
+            // Center tile on dot (140px wide, 90px tall)
+            tile.style.left = `${person.x - 70}px`;
+            tile.style.top = `${person.y - 45}px`;
+            tile.style.cursor = 'pointer'; // Default to pointer for view mode
+            
+            console.log('Tile created with position:', tile.style.left, tile.style.top); // Debug
+            
+            tile.innerHTML = `
+                <button class="tile-remove" onclick="removePerson('${person.id}')">×</button>
+                <div class="tile-name">${person.name}</div>
+                <div class="tile-dates">${person.dates}</div>
+            `;
+            
+            // Click handler for view mode and drawing lines
+            tile.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tile-remove')) return;
+                
+                if (!editMode) {
+                    // View mode - open dossier
+                    openDossier(person.id);
+                    return;
+                }
+                
+                if (drawLinesMode) {
+                    // Edit mode with draw lines - select tiles for drawing lines
+                    if (selectedForLine.includes(person.id)) {
+                        // Deselect
+                        selectedForLine = selectedForLine.filter(id => id !== person.id);
+                        tile.style.outline = 'none';
+                    } else {
+                        selectedForLine.push(person.id);
+                        tile.style.outline = '3px solid ' + getComputedStyle(document.documentElement).getPropertyValue('--sepia');
+                        
+                        // If two tiles selected, draw line
+                        if (selectedForLine.length === 2) {
+                            addConnection(selectedForLine[0], selectedForLine[1]);
+                            
+                            // Clear selection
+                            selectedForLine.forEach(id => {
+                                const t = document.querySelector(`[data-id="${id}"]`);
+                                if (t) t.style.outline = 'none';
+                            });
+                            selectedForLine = [];
+                        }
+                    }
+                    e.stopPropagation();
+                }
+            });
+            
+            // Double-click to edit
+            tile.addEventListener('dblclick', (e) => {
+                if (e.target.classList.contains('tile-remove')) return;
+                
+                const newName = prompt('Edit name:', person.name);
+                if (newName !== null && newName !== '') {
+                    person.name = newName;
+                    const newDates = prompt('Edit dates:', person.dates);
+                    if (newDates !== null) {
+                        person.dates = newDates;
+                    }
+                    
+                    tile.querySelector('.tile-name').textContent = person.name;
+                    tile.querySelector('.tile-dates').textContent = person.dates;
+                }
+            });
+            
+            // Drag functionality - only in edit mode
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            tile.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('tile-remove')) return;
+                if (!editMode) return; // Only drag in edit mode
+                if (drawLinesMode) return; // Don't drag in draw lines mode
+                
+                if (e.ctrlKey || e.metaKey) {
+                    // Multi-select
+                    tile.classList.toggle('selected');
+                    const index = selectedPersons.indexOf(person.id);
+                    if (index > -1) {
+                        selectedPersons.splice(index, 1);
+                    } else {
+                        selectedPersons.push(person.id);
+                    }
+                } else {
+                    // Start dragging
+                    isDragging = true;
+                    tile.classList.add('dragging');
+                    
+                    const rect = tile.getBoundingClientRect();
+                    const canvas = document.getElementById('gridCanvas').getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                    
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const canvas = document.getElementById('gridCanvas');
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                let newX = e.clientX - canvasRect.left - offsetX + canvas.scrollLeft + 70; // Add half width
+                let newY = e.clientY - canvasRect.top - offsetY + canvas.scrollTop + 45; // Add half height
+                
+                // Snap to grid
+                newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+                newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
+                
+                const deltaX = newX - person.x;
+                const deltaY = newY - person.y;
+                
+                // Check if canvas needs to expand (before updating position)
+                const shift = checkAndExpandCanvas(newX, newY);
+                
+                // If canvas shifted, adjust the new position
+                newX += shift.shiftX;
+                newY += shift.shiftY;
+                
+                tile.style.left = `${newX - 70}px`;
+                tile.style.top = `${newY - 45}px`;
+                
+                person.x = newX;
+                person.y = newY;
+                
+                // Move selected persons together
+                if (selectedPersons.includes(person.id) && selectedPersons.length > 1) {
+                    selectedPersons.forEach(pid => {
+                        if (pid !== person.id) {
+                            const p = persons.find(ps => ps.id === pid);
+                            if (p) {
+                                // Note: p.x and p.y were already shifted by checkAndExpandCanvas if needed
+                                p.x += deltaX;
+                                p.y += deltaY;
+                                const pTile = document.querySelector(`[data-id="${pid}"]`);
+                                if (pTile) {
+                                    pTile.style.left = `${p.x - 70}px`;
+                                    pTile.style.top = `${p.y - 45}px`;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                redrawConnections();
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    tile.classList.remove('dragging');
+                    // Trim canvas after drag completes
+                    setTimeout(() => trimCanvasToFit(), 100);
+                }
+            });
+            
+            // Touch events for mobile
+            tile.addEventListener('touchstart', (e) => {
+                if (e.target.classList.contains('tile-remove')) return;
+                if (!editMode) return;
+                if (drawLinesMode) return;
+                
+                const touch = e.touches[0];
+                isDragging = true;
+                tile.classList.add('dragging');
+                
+                const rect = tile.getBoundingClientRect();
+                offsetX = touch.clientX - rect.left;
+                offsetY = touch.clientY - rect.top;
+                
+                e.preventDefault();
+            }, { passive: false });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                
+                const touch = e.touches[0];
+                const canvas = document.getElementById('gridCanvas');
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                let newX = touch.clientX - canvasRect.left - offsetX + canvas.scrollLeft + 70;
+                let newY = touch.clientY - canvasRect.top - offsetY + canvas.scrollTop + 45;
+                
+                // Snap to grid
+                newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+                newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
+                
+                const deltaX = newX - person.x;
+                const deltaY = newY - person.y;
+                
+                const shift = checkAndExpandCanvas(newX, newY);
+                newX += shift.shiftX;
+                newY += shift.shiftY;
+                
+                tile.style.left = `${newX - 70}px`;
+                tile.style.top = `${newY - 45}px`;
+                
+                person.x = newX;
+                person.y = newY;
+                
+                // Move selected persons together
+                if (selectedPersons.includes(person.id) && selectedPersons.length > 1) {
+                    selectedPersons.forEach(pid => {
+                        if (pid !== person.id) {
+                            const p = persons.find(ps => ps.id === pid);
+                            if (p) {
+                                p.x += deltaX;
+                                p.y += deltaY;
+                                const pTile = document.querySelector(`[data-id="${pid}"]`);
+                                if (pTile) {
+                                    pTile.style.left = `${p.x - 70}px`;
+                                    pTile.style.top = `${p.y - 45}px`;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                redrawConnections();
+            }, { passive: false });
+            
+            document.addEventListener('touchend', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    tile.classList.remove('dragging');
+                    setTimeout(() => trimCanvasToFit(), 100);
+                }
+            });
+            
+            console.log('About to append tile to personTiles'); // Debug
+            personTiles.appendChild(tile);
+            console.log('Tile appended successfully'); // Debug
+        }
+
+        // Remove Person
+        function removePerson(id) {
+            if (confirm('Remove this person?')) {
+                const tile = document.querySelector(`[data-id="${id}"]`);
+                if (tile) tile.remove();
+                
+                persons = persons.filter(p => p.id !== id);
+                
+                // Remove connections involving this person
+                connections = connections.filter(c => c.person1 !== id && c.person2 !== id);
+                redrawConnections();
+            }
+        }
+
+        // Add Connection - now stores person IDs instead of coordinates
+        function addConnection(person1Id, person2Id) {
+            // Check if connection already exists
+            const exists = connections.some(c => 
+                (c.person1 === person1Id && c.person2 === person2Id) ||
+                (c.person1 === person2Id && c.person2 === person1Id)
+            );
+            
+            if (!exists) {
+                connections.push({ person1: person1Id, person2: person2Id });
+                redrawConnections();
+            }
+        }
+
+        // Remove Connection
+        function removeConnection(index) {
+            connections.splice(index, 1);
+            redrawConnections();
+        }
+
+        // Redraw Connections - now calculates positions from person IDs
+        function redrawConnections() {
+            const svg = document.getElementById('connectionsSvg');
+            svg.innerHTML = '';
+            
+            connections.forEach((conn, index) => {
+                const person1 = persons.find(p => p.id === conn.person1);
+                const person2 = persons.find(p => p.id === conn.person2);
+                
+                if (!person1 || !person2) return;
+                
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', person1.x);
+                line.setAttribute('y1', person1.y);
+                line.setAttribute('x2', person2.x);
+                line.setAttribute('y2', person2.y);
+                line.setAttribute('stroke', '#c4b89a');
+                line.setAttribute('stroke-width', '2');
+                line.classList.add('connection-line');
+                line.style.pointerEvents = 'stroke';
+                line.style.cursor = 'pointer';
+                
+                // Click to delete (no confirmation)
+                line.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeConnection(index);
+                });
+                
+                svg.appendChild(line);
+            });
+        }
+
+
+        // Tree Controls with Mouse Wheel Zoom
+        let zoomLevel = 1;
+        const treeContainer = document.querySelector('.tree-container');
+
+        // Dossier Panel
+        const dossierPanel = document.getElementById('dossierPanel');
+
+        function openDossier(personId) {
+            const person = persons.find(p => p.id === personId);
+            if (!person) return;
+
+            document.getElementById('dossierName').textContent = person.name;
+            document.getElementById('dossierDates').textContent = 
+                (person.birthDate ? person.birthDate : 'Unknown') + 
+                (person.deathDate ? ' – ' + person.deathDate : '');
+
+            let contentHTML = '';
+            
+            // Birth Information
+            if (person.birthDate || person.birthPlace) {
+                contentHTML += '<div class="dossier-section"><h3 class="section-title">Birth</h3>';
+                if (person.birthDate) {
+                    contentHTML += `<div class="info-row"><span class="info-label">Date:</span><span>${person.birthDate}</span></div>`;
+                }
+                if (person.birthPlace) {
+                    contentHTML += `<div class="info-row"><span class="info-label">Place:</span><span>${person.birthPlace}</span></div>`;
+                }
+                contentHTML += '</div>';
+            }
+            
+            // Death Information
+            if (person.deathDate) {
+                contentHTML += '<div class="dossier-section"><h3 class="section-title">Death</h3>';
+                contentHTML += `<div class="info-row"><span class="info-label">Date:</span><span>${person.deathDate}</span></div>`;
+                contentHTML += '</div>';
+            }
+            
+            // Family Relations
+            if (person.parents || person.spouse) {
+                contentHTML += '<div class="dossier-section"><h3 class="section-title">Family</h3>';
+                if (person.parents) {
+                    contentHTML += `<div class="info-row"><span class="info-label">Parents:</span><span>${person.parents.replace(/\n/g, '<br>')}</span></div>`;
+                }
+                if (person.spouse) {
+                    contentHTML += `<div class="info-row"><span class="info-label">Spouse:</span><span>${person.spouse.replace(/\n/g, '<br>')}</span></div>`;
+                }
+                contentHTML += '</div>';
+            }
+            
+            // Notes
+            if (person.notes) {
+                contentHTML += '<div class="dossier-section"><h3 class="section-title">Notes</h3>';
+                contentHTML += `<p class="biography">${person.notes.replace(/\n/g, '<br>')}</p>`;
+                contentHTML += '</div>';
+            }
+
+            document.getElementById('dossierContent').innerHTML = contentHTML;
+            dossierPanel.classList.add('open');
+        }
+
+        function closeDossier() {
+            dossierPanel.classList.remove('open');
+        }
+
+        // Settings Panel Functions
+        const settingsPanel = document.getElementById('settingsPanel');
+        
+        function openSettings() {
+            settingsPanel.classList.add('open');
+        }
+        
+        function closeSettings() {
+            settingsPanel.classList.remove('open');
+        }
+        
+        // Close settings when clicking outside
+        document.addEventListener('click', (e) => {
+            if (settingsPanel.classList.contains('open') && 
+                !settingsPanel.contains(e.target) && 
+                !e.target.closest('.settings-btn') &&
+                !e.target.closest('#settingsBtn')) {
+                closeSettings();
+            }
+        });
+        
+        // Configuration File Functions
+        function downloadConfiguration() {
+            const config = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                persons: persons.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    dates: p.dates,
+                    birthDate: p.birthDate,
+                    birthPlace: p.birthPlace,
+                    deathDate: p.deathDate,
+                    parents: p.parents,
+                    spouse: p.spouse,
+                    notes: p.notes,
+                    x: p.x,
+                    y: p.y,
+                    deceased: p.deceased,
+                    inVitro: p.inVitro
+                })),
+                connections: connections,
+                nextPersonId: nextPersonId
+            };
+            
+            // Format date as DDMonthYYYY (e.g., 23January2026)
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+            const month = months[now.getMonth()];
+            const year = now.getFullYear();
+            const dateStr = `${day}${month}${year}`;
+            
+            const dataStr = JSON.stringify(config, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Woodward_Tree_${dateStr}.json`;
+            
+            // Append to body, click, then remove (for browser compatibility)
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up the URL object
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
+            alert('Configuration file downloaded successfully!');
+        }
+        
+        function uploadConfiguration(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    
+                    console.log('Loaded configuration:', config);
+                    
+                    // Validate configuration
+                    if (!config.persons || !Array.isArray(config.persons)) {
+                        throw new Error('Invalid configuration file: missing persons array');
+                    }
+                    
+                    console.log('Number of persons to load:', config.persons.length);
+                    console.log('Number of connections to load:', config.connections ? config.connections.length : 0);
+                    
+                    // Confirm before loading
+                    if (!confirm('Loading this configuration will replace your current family tree. Continue?')) {
+                        return;
+                    }
+                    
+                    // Clear existing data
+                    persons.length = 0; // Clear array properly
+                    connections.length = 0; // Clear array properly
+                    selectedPersons = [];
+                    selectedForLine = [];
+                    
+                    // Clear DOM elements
+                    const personTiles = document.getElementById('personTiles');
+                    const connectionsSvg = document.getElementById('connectionsSvg');
+                    if (personTiles) personTiles.innerHTML = '';
+                    if (connectionsSvg) connectionsSvg.innerHTML = '';
+                    
+                    // Load persons
+                    nextPersonId = config.nextPersonId || 1;
+                    config.persons.forEach((p, index) => {
+                        // Ensure all properties are preserved
+                        const person = {
+                            id: p.id,
+                            name: p.name || '',
+                            dates: p.dates || '',
+                            birthDate: p.birthDate || '',
+                            birthPlace: p.birthPlace || '',
+                            deathDate: p.deathDate || '',
+                            parents: p.parents || '',
+                            spouse: p.spouse || '',
+                            notes: p.notes || '',
+                            x: p.x || 0,
+                            y: p.y || 0,
+                            deceased: p.deceased || false,
+                            inVitro: p.inVitro || false
+                        };
+                        persons.push(person);
+                        console.log(`Rendering person ${index + 1}:`, person.name, 'at', person.x, person.y);
+                        renderPerson(person);
+                    });
+                    
+                    console.log('All persons rendered. Total:', persons.length);
+                    
+                    // Load connections
+                    if (config.connections && Array.isArray(config.connections)) {
+                        config.connections.forEach(conn => {
+                            connections.push(conn);
+                        });
+                    }
+                    
+                    console.log('Connections loaded:', connections.length);
+                    
+                    // Redraw connections
+                    redrawConnections();
+                    
+                    // Update data table
+                    populateDataTable();
+                    
+                    // Switch to tree view to show the loaded tree
+                    switchToTreeView();
+                    
+                    // Ensure canvas is properly sized
+                    const gridCanvas = document.getElementById('gridCanvas');
+                    if (gridCanvas) {
+                        gridCanvas.style.width = CANVAS_WIDTH + 'px';
+                        gridCanvas.style.height = CANVAS_HEIGHT + 'px';
+                    }
+                    
+                    // Adjust canvas to fit content
+                    setTimeout(() => {
+                        trimCanvasToFit();
+                        redrawConnections(); // Redraw again after canvas adjustment
+                        console.log('Tree restoration complete!');
+                    }, 100);
+                    
+                    alert('Configuration loaded successfully!');
+                    closeSettings();
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    alert('Error loading configuration file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Close dossier when clicking outside
+        document.addEventListener('click', (e) => {
+            if (dossierPanel.classList.contains('open') && 
+                !dossierPanel.contains(e.target) && 
+                !e.target.closest('.person-tile')) {
+                closeDossier();
+            }
+        });
+
+        // Data Table Functions
+        function parseDate(dateStr) {
+            // Return null for empty or unknown dates
+            if (!dateStr || dateStr === 'Unknown' || dateStr.trim() === '') return null;
+            
+            // Try to extract a 4-digit year from anywhere in the string
+            const yearMatch = dateStr.match(/\b(1\d{3}|20\d{2})\b/);
+            if (!yearMatch) return null;
+            
+            const year = parseInt(yearMatch[0]);
+            
+            // Month name patterns (full and abbreviated)
+            const monthMap = {
+                'january': 0, 'jan': 0,
+                'february': 1, 'feb': 1,
+                'march': 2, 'mar': 2,
+                'april': 3, 'apr': 3,
+                'may': 4,
+                'june': 5, 'jun': 5,
+                'july': 6, 'jul': 6,
+                'august': 7, 'aug': 7,
+                'september': 8, 'sep': 8, 'sept': 8,
+                'october': 9, 'oct': 9,
+                'november': 10, 'nov': 10,
+                'december': 11, 'dec': 11
+            };
+            
+            // Try to find month name
+            const lowerStr = dateStr.toLowerCase();
+            let month = 0; // Default to January if not found
+            
+            for (const [monthName, monthNum] of Object.entries(monthMap)) {
+                if (lowerStr.includes(monthName)) {
+                    month = monthNum;
+                    break;
+                }
+            }
+            
+            // Try to find day (1-31)
+            const dayMatch = dateStr.match(/\b([1-9]|[12]\d|3[01])\b/);
+            const day = dayMatch ? parseInt(dayMatch[0]) : 1;
+            
+            return new Date(year, month, day);
+        }
+        
+        // Get generation level for sorting when dates aren't available
+        function getGenerationLevel(person) {
+            // Count how many generations back this person is
+            // Based on parent/child relationships in the notes
+            const notes = person.notes?.toLowerCase() || '';
+            
+            if (notes.includes('paternal grandfather') || notes.includes('maternal grandfather') ||
+                notes.includes('paternal grandmother') || notes.includes('maternal grandmother')) {
+                return 1; // Grandparents
+            }
+            if (notes.includes("tim's dad") || notes.includes("tim's mom") ||
+                notes.includes("tim's uncle") || notes.includes("tim's aunt")) {
+                return 2; // Parents/aunts/uncles
+            }
+            if (notes.includes("tim's paternal step-grandmother") || notes.includes("tim's maternal step-grandmother")) {
+                return 1.5; // Step-grandparents (between grandparents and parents)
+            }
+            
+            // Check if this person has parents listed - if they list Tim's kids as parents, they're Tim's children
+            const parents = person.parents?.toLowerCase() || '';
+            if (parents.includes('titus') || parents.includes('abraham') || parents.includes('jaden')) {
+                return 3; // Tim's generation
+            }
+            
+            // If no clear generation marker, assume youngest
+            return 4; // Children
+        }
+
+        function populateDataTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+            
+            // Use default order (order in persons array)
+            persons.forEach((person, index) => {
+                const row = document.createElement('tr');
+                row.dataset.personId = person.id;
+                row.dataset.personIndex = index;
+                row.draggable = true;
+                row.classList.add('draggable-row');
+                
+                // Get field values (blank for now except name)
+                const name = person.name || '';
+                const birthDate = person.birthDate || '';
+                const birthPlace = person.birthPlace || '';
+                const deathDate = person.deathDate || '';
+                const parents = person.parents || '';
+                const spouse = person.spouse || '';
+                const notes = person.notes || '';
+                
+                row.innerHTML = `
+                    <td><textarea data-field="name" rows="1">${name}</textarea></td>
+                    <td><input type="text" value="${birthDate}" data-field="birthDate"></td>
+                    <td><textarea data-field="birthPlace" rows="1">${birthPlace}</textarea></td>
+                    <td><input type="text" value="${deathDate}" data-field="deathDate"></td>
+                    <td><textarea data-field="parents" rows="1">${parents}</textarea></td>
+                    <td><textarea data-field="spouse" rows="1">${spouse}</textarea></td>
+                    <td><textarea data-field="notes" rows="1">${notes}</textarea></td>
+                    <td><button class="btn-delete" data-person-id="${person.id}">Delete</button></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+            
+            // Add input event listeners for live editing
+            tbody.querySelectorAll('input, textarea').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const personId = e.target.closest('tr').dataset.personId;
+                    const field = e.target.dataset.field;
+                    const value = e.target.value;
+                    
+                    updatePersonData(personId, field, value);
+                });
+                
+                // Auto-resize textareas
+                if (input.tagName === 'TEXTAREA') {
+                    input.addEventListener('input', (e) => {
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                    });
+                    // Initial resize
+                    input.style.height = 'auto';
+                    input.style.height = input.scrollHeight + 'px';
+                }
+            });
+            
+            // Add delete button event listeners
+            tbody.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const personId = e.target.dataset.personId;
+                    deletePersonFromTable(personId);
+                });
+            });
+            
+            // Add drag and drop event listeners for reordering
+            let draggedRow = null;
+            
+            tbody.querySelectorAll('.draggable-row').forEach(row => {
+                row.addEventListener('dragstart', (e) => {
+                    draggedRow = row;
+                    row.style.opacity = '0.5';
+                });
+                
+                row.addEventListener('dragend', (e) => {
+                    row.style.opacity = '1';
+                });
+                
+                row.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(tbody, e.clientY);
+                    if (afterElement == null) {
+                        tbody.appendChild(draggedRow);
+                    } else {
+                        tbody.insertBefore(draggedRow, afterElement);
+                    }
+                });
+                
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    // Reorder the persons array based on new table order
+                    const newOrder = [];
+                    tbody.querySelectorAll('tr').forEach(tr => {
+                        const personId = tr.dataset.personId;
+                        const person = persons.find(p => p.id === personId);
+                        if (person) newOrder.push(person);
+                    });
+                    persons.length = 0;
+                    persons.push(...newOrder);
+                });
+            });
+        }
+        
+        // Render mobile card view
+        function populateCardView() {
+            const cardView = document.getElementById('cardView');
+            cardView.innerHTML = '';
+            
+            persons.forEach((person, index) => {
+                const card = document.createElement('div');
+                card.className = 'person-card';
+                card.dataset.personId = person.id;
+                
+                card.innerHTML = `
+                    <div class="person-card-header">
+                        <div class="person-card-name">${person.name || 'Unnamed'}</div>
+                        <button class="btn-delete" data-person-id="${person.id}">Delete</button>
+                    </div>
+                    
+                    <div class="person-card-field">
+                        <div class="person-card-label">Name</div>
+                        <div class="person-card-value">
+                            <textarea data-field="name" rows="1">${person.name || ''}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-field">
+                        <div class="person-card-label">Birth Date</div>
+                        <div class="person-card-value">
+                            <input type="text" value="${person.birthDate || ''}" data-field="birthDate">
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-field">
+                        <div class="person-card-label">Birth Place</div>
+                        <div class="person-card-value">
+                            <textarea data-field="birthPlace" rows="2">${person.birthPlace || ''}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-field">
+                        <div class="person-card-label">Death Date</div>
+                        <div class="person-card-value">
+                            <input type="text" value="${person.deathDate || ''}" data-field="deathDate">
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-field">
+                        <div class="person-card-label">Parents</div>
+                        <div class="person-card-value">
+                            <textarea data-field="parents" rows="2">${person.parents || ''}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-field">
+                        <div class="person-card-label">Spouse</div>
+                        <div class="person-card-value">
+                            <textarea data-field="spouse" rows="2">${person.spouse || ''}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-field">
+                        <div class="person-card-label">Notes</div>
+                        <div class="person-card-value">
+                            <textarea data-field="notes" rows="3">${person.notes || ''}</textarea>
+                        </div>
+                    </div>
+                `;
+                
+                cardView.appendChild(card);
+                
+                // Add event listeners for inputs
+                card.querySelectorAll('input, textarea').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const field = e.target.dataset.field;
+                        const value = e.target.value;
+                        updatePersonData(person.id, field, value);
+                        
+                        // Update card header if name changed
+                        if (field === 'name') {
+                            const headerName = card.querySelector('.person-card-name');
+                            if (headerName) headerName.textContent = value || 'Unnamed';
+                        }
+                    });
+                });
+                
+                // Add delete button listener
+                card.querySelector('.btn-delete').addEventListener('click', (e) => {
+                    const personId = e.target.dataset.personId;
+                    deletePersonFromTable(personId);
+                });
+            });
+        }
+        
+        // Toggle between table and card view
+        let isCardView = false;
+        function toggleDataView() {
+            const tableView = document.getElementById('tableView');
+            const cardView = document.getElementById('cardView');
+            const toggleBtn = document.getElementById('toggleViewBtn');
+            
+            isCardView = !isCardView;
+            
+            if (isCardView) {
+                tableView.style.display = 'none';
+                cardView.style.display = 'block';
+                toggleBtn.textContent = '📊 Table View';
+                populateCardView();
+            } else {
+                tableView.style.display = 'block';
+                cardView.style.display = 'none';
+                toggleBtn.textContent = '📱 Card View';
+                populateDataTable();
+            }
+        }
+        
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.draggable-row:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function updatePersonData(personId, field, value) {
+            const person = persons.find(p => p.id === personId);
+            if (person) {
+                person[field] = value;
+                
+                // Update the tile if it exists
+                const tile = document.querySelector(`[data-id="${personId}"]`);
+                if (tile) {
+                    if (field === 'name') {
+                        const nameEl = tile.querySelector('.tile-name');
+                        if (nameEl) nameEl.textContent = value;
+                    } else if (field === 'dates') {
+                        const datesEl = tile.querySelector('.tile-dates');
+                        if (datesEl) datesEl.textContent = value;
+                    }
+                }
+            }
+        }
+
+        function deletePersonFromTable(personId) {
+            if (!confirm('Are you sure you want to delete this person?')) {
+                return;
+            }
+            
+            // Remove from persons array
+            const index = persons.findIndex(p => p.id === personId);
+            if (index > -1) {
+                persons.splice(index, 1);
+            }
+            
+            // Remove the tile
+            const tile = document.querySelector(`[data-id="${personId}"]`);
+            if (tile) {
+                tile.remove();
+            }
+            
+            // Remove any connections involving this person
+            connections = connections.filter(c => c.person1 !== personId && c.person2 !== personId);
+            redrawConnections();
+            
+            // Refresh the current view
+            if (isCardView) {
+                populateCardView();
+            } else {
+                populateDataTable();
+            }
+        }
+
+        function downloadExcel() {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Prepare data for worksheet
+            const data = [
+                ['Name', 'Birth Date', 'Birth Place', 'Death Date', 'Parents', 'Spouse', 'Notes'] // Header row
+            ];
+            
+            // Use default order (same as table)
+            persons.forEach(person => {
+                data.push([
+                    person.name || '',
+                    person.birthDate || '',
+                    person.birthPlace || '',
+                    person.deathDate || '',
+                    person.parents || '',
+                    person.spouse || '',
+                    person.notes || ''
+                ]);
+            });
+            
+            // Create worksheet
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Family Data');
+            
+            // Download
+            XLSX.writeFile(wb, 'family-data.xlsx');
+        }
+
+        // Archive File Management - Declare variables before DOMContentLoaded
+        let archiveFiles = {}; // Structure: { 'path/to/folder': [files] }
+        let currentPath = '';
+
+        // Add event listener for download button
+        // Setup event listeners on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Excel download button
+            const downloadBtn = document.getElementById('downloadExcelBtn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', downloadExcel);
+            }
+            
+            // Toggle view button (mobile)
+            const toggleViewBtn = document.getElementById('toggleViewBtn');
+            if (toggleViewBtn) {
+                toggleViewBtn.addEventListener('click', toggleDataView);
+            }
+            
+            // Archive buttons
+            const createFolderBtn = document.getElementById('createFolderBtn');
+            const uploadFileBtn = document.getElementById('uploadFileBtn');
+            const fileInput = document.getElementById('fileInput');
+            
+            if (createFolderBtn) {
+                createFolderBtn.addEventListener('click', createFolder);
+            }
+            
+            if (uploadFileBtn) {
+                uploadFileBtn.addEventListener('click', uploadFiles);
+            }
+            
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    const files = Array.from(e.target.files);
+                    if (!archiveFiles[currentPath]) {
+                        archiveFiles[currentPath] = [];
+                    }
+                    
+                    files.forEach(file => {
+                        archiveFiles[currentPath].push({
+                            name: file.name,
+                            size: file.size,
+                            data: file
+                        });
+                    });
+                    
+                    renderArchive();
+                    e.target.value = ''; // Reset input
+                });
+            }
+            
+            // Settings button
+            const settingsBtn = document.getElementById('settingsBtn');
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', openSettings);
+            }
+            
+            // Configuration download button
+            const downloadConfigBtn = document.getElementById('downloadConfigBtn');
+            if (downloadConfigBtn) {
+                downloadConfigBtn.addEventListener('click', downloadConfiguration);
+            }
+            
+            // Configuration upload button
+            const uploadConfigBtn = document.getElementById('uploadConfigBtn');
+            const configFileInput = document.getElementById('configFileInput');
+            if (uploadConfigBtn && configFileInput) {
+                uploadConfigBtn.addEventListener('click', () => {
+                    configFileInput.click();
+                });
+                
+                configFileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        uploadConfiguration(file);
+                    }
+                    e.target.value = ''; // Reset input
+                });
+            }
+        });
+
+        // Archive rendering and management functions
+        function renderArchive() {
+            const content = document.getElementById('archiveContent');
+            const breadcrumb = document.getElementById('archiveBreadcrumb');
+            
+            // Update breadcrumb
+            const pathParts = currentPath ? currentPath.split('/') : [];
+            let breadcrumbHTML = '<span class="breadcrumb-item" onclick="navigateToPath(\'\')">Archive</span>';
+            let buildPath = '';
+            pathParts.forEach(part => {
+                buildPath += (buildPath ? '/' : '') + part;
+                breadcrumbHTML += `<span class="breadcrumb-item" onclick="navigateToPath('${buildPath}')">${part}</span>`;
+            });
+            breadcrumb.innerHTML = breadcrumbHTML;
+            
+            // Get items in current path
+            const folders = new Set();
+            const files = [];
+            
+            Object.keys(archiveFiles).forEach(path => {
+                if (path.startsWith(currentPath)) {
+                    const relativePath = currentPath ? path.substring(currentPath.length + 1) : path;
+                    if (relativePath && !relativePath.includes('/')) {
+                        folders.add(relativePath);
+                    }
+                }
+            });
+            
+            if (archiveFiles[currentPath]) {
+                files.push(...archiveFiles[currentPath]);
+            }
+            
+            // Render content
+            if (folders.size === 0 && files.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <p>📂 No files or folders yet</p>
+                        <p class="empty-state-hint">Click "Upload Files" or "Create Folder" to add items</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="archive-grid">';
+            
+            // Add folders
+            folders.forEach(folder => {
+                html += `
+                    <div class="archive-item folder" onclick="navigateToPath('${currentPath ? currentPath + '/' : ''}${folder}')">
+                        <div class="archive-item-icon"></div>
+                        <div class="archive-item-name">${folder}</div>
+                        <div class="archive-item-type">Folder</div>
+                    </div>
+                `;
+            });
+            
+            // Add files
+            files.forEach(file => {
+                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+                const itemClass = isImage ? 'image' : 'file';
+                html += `
+                    <div class="archive-item ${itemClass}" onclick="downloadFile('${currentPath}', '${file.name}')">
+                        <div class="archive-item-icon"></div>
+                        <div class="archive-item-name">${file.name}</div>
+                        <div class="archive-item-type">${formatFileSize(file.size)}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        function navigateToPath(path) {
+            currentPath = path;
+            renderArchive();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function createFolder() {
+            const folderName = prompt('Enter folder name:');
+            if (!folderName) return;
+            
+            const newPath = currentPath ? currentPath + '/' + folderName : folderName;
+            if (!archiveFiles[newPath]) {
+                archiveFiles[newPath] = [];
+                renderArchive();
+            } else {
+                alert('Folder already exists');
+            }
+        }
+
+        function uploadFiles() {
+            document.getElementById('fileInput').click();
+        }
+
+        function downloadFile(path, filename) {
+            const files = archiveFiles[path];
+            if (!files) return;
+            
+            const file = files.find(f => f.name === filename);
+            if (!file) return;
+            
+            // Create download link
+            const url = URL.createObjectURL(file.data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Detect mobile and show helpful hints
+        function isMobileDevice() {
+            return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+        
+        // Show mobile hint if on mobile
+        if (isMobileDevice()) {
+            const mobileHint = document.querySelector('.mobile-hint');
+            if (mobileHint) {
+                mobileHint.style.display = 'block';
+            }
+        }
+        
+        // Initialize grid on page load since Tree tab is active by default
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeGrid();
+        });
+    </script>
+</body>
+</html>
