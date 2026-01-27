@@ -34,7 +34,7 @@
         header {
             background: var(--aged-paper);
             border-bottom: 2px solid var(--border-color);
-            padding: 2rem 3rem;
+            padding: 2rem 1rem;
             box-shadow: 0 2px 8px var(--shadow);
             position: relative;
         }
@@ -113,7 +113,7 @@
         .settings-btn {
             position: absolute;
             top: 2rem;
-            right: 3rem;
+            right: 1rem;
             background: transparent;
             border: 2px solid var(--border-color);
             padding: 0.75rem 1.5rem;
@@ -133,9 +133,9 @@
 
         /* Main Container */
         .container {
-            max-width: 1800px;
-            margin: 0 auto;
-            padding: 2rem;
+            max-width: 100%;
+            margin: 0;
+            padding: 1rem;
         }
 
         .view {
@@ -516,6 +516,186 @@
             line-height: 1.4;
         }
 
+        /* File Viewer Modal */
+        .file-viewer-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            background: var(--parchment);
+            border: 3px solid var(--border-color);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+        }
+        
+        .file-viewer-modal.active {
+            display: flex;
+        }
+        
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1999;
+            display: none;
+        }
+        
+        .modal-backdrop.active {
+            display: block;
+        }
+        
+        .file-viewer-header {
+            background: var(--aged-paper);
+            padding: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .file-viewer-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--ink-dark);
+        }
+        
+        .close-viewer {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: var(--ink-faded);
+            transition: color 0.2s;
+            padding: 0.5rem;
+        }
+        
+        .close-viewer:hover {
+            color: var(--sepia);
+        }
+        
+        .file-viewer-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background: white;
+        }
+        
+        .file-display {
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .file-display img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .file-display iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            font-size: 3rem;
+            width: 60px;
+            height: 80px;
+            cursor: pointer;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        
+        .nav-arrow:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .nav-arrow:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .nav-left {
+            left: 0;
+        }
+        
+        .nav-right {
+            right: 0;
+        }
+        
+        .file-viewer-actions {
+            padding: 1rem;
+            border-top: 2px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        .folder-files-dropdown {
+            margin-left: 2rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.25rem 0;
+        }
+        
+        .folder-files-dropdown.open {
+            display: flex;
+        }
+        
+        .folder-file-item {
+            padding: 0.4rem 0.75rem;
+            cursor: pointer;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+            color: var(--ink-faded);
+        }
+        
+        .folder-file-item:hover {
+            background: rgba(160, 82, 45, 0.1);
+            color: var(--ink-dark);
+        }
+        
+        .folder-toggle {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: auto;
+            color: var(--ink-faded);
+            transition: transform 0.2s;
+        }
+        
+        .folder-toggle.open {
+            transform: rotate(90deg);
+        }
+
         /* Dossier Panel */
         .dossier-panel {
             position: fixed;
@@ -617,6 +797,109 @@
             background: var(--aged-paper);
             min-height: 100vh;
         }
+        
+        .archive-layout {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .archive-sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: var(--parchment);
+            border: 2px solid var(--border-color);
+            padding: 1rem;
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .sidebar-header h3 {
+            font-size: 1rem;
+            font-variant: small-caps;
+            letter-spacing: 0.05em;
+            color: var(--ink-dark);
+        }
+        
+        .folder-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .folder-tree-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.2s;
+            user-select: none;
+        }
+        
+        .folder-tree-item:hover {
+            background: rgba(160, 82, 45, 0.1);
+        }
+        
+        .folder-tree-item.active {
+            background: var(--sepia);
+            color: var(--parchment);
+        }
+        
+        .folder-tree-item.child {
+            padding-left: 2rem;
+        }
+        
+        .folder-tree-item.grandchild {
+            padding-left: 3.25rem;
+        }
+        
+        .folder-icon {
+            font-size: 1rem;
+        }
+        
+        .folder-name {
+            flex: 1;
+            font-size: 0.9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .folder-actions {
+            display: none;
+            gap: 0.25rem;
+        }
+        
+        .folder-tree-item:hover .folder-actions {
+            display: flex;
+        }
+        
+        .folder-action-btn {
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .folder-action-btn:hover {
+            opacity: 1;
+        }
+        
+        .archive-main {
+            flex: 1;
+            min-width: 0;
+        }
 
         .archive-header {
             display: flex;
@@ -699,6 +982,16 @@
         .archive-item:hover {
             box-shadow: 0 2px 8px var(--shadow);
             transform: translateY(-2px);
+        }
+        
+        .archive-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .archive-item.drag-over {
+            background: rgba(160, 82, 45, 0.2);
+            border-color: var(--sepia);
         }
 
         .archive-item-icon {
@@ -916,6 +1209,45 @@
             position: relative;
             overflow: auto;
             cursor: default;
+            width: 100%;
+            max-width: 100%;
+            touch-action: pan-x pan-y pinch-zoom; /* Enable pinch zoom on mobile */
+        }
+        
+        /* Mobile Controls */
+        .mobile-controls {
+            display: none;
+            position: fixed;
+            bottom: 2rem;
+            right: 1rem;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 100;
+        }
+        
+        .mobile-control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--sepia);
+            color: var(--parchment);
+            border: 2px solid var(--border-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .mobile-control-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        
+        .mobile-control-btn:active {
+            transform: scale(0.95);
         }
 
         .grid-dots {
@@ -1179,6 +1511,19 @@
             background: white;
         }
 
+        .data-table input[readonly],
+        .data-table textarea[readonly] {
+            cursor: default;
+            background: transparent;
+            border: 1px solid transparent;
+        }
+
+        .data-table input[readonly]:focus,
+        .data-table textarea[readonly]:focus {
+            border: 1px solid transparent;
+            background: transparent;
+        }
+
         .status-badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -1403,6 +1748,11 @@
                 padding: 0.75rem 1rem;
             }
             
+            /* Show mobile controls on mobile */
+            .mobile-controls {
+                display: flex;
+            }
+            
             .data-section {
                 padding: 0.5rem;
             }
@@ -1524,6 +1874,21 @@
             .archive-controls {
                 width: 100%;
                 flex-direction: column;
+            }
+            
+            /* Archive sidebar - stack on mobile */
+            .archive-layout {
+                flex-direction: column;
+            }
+            
+            .archive-sidebar {
+                width: 100%;
+                max-height: 200px;
+            }
+            
+            .folder-tree-item {
+                padding: 0.75rem;
+                font-size: 0.9rem;
             }
             
             .archive-controls .btn-tool {
@@ -1650,6 +2015,27 @@
                 font-size: 0.7rem;
             }
             
+            /* File viewer on mobile */
+            .file-viewer-modal {
+                width: 100%;
+                height: 100vh;
+                max-width: 100%;
+            }
+            
+            .nav-arrow {
+                width: 50px;
+                height: 60px;
+                font-size: 2rem;
+            }
+            
+            .file-viewer-header {
+                padding: 1rem;
+            }
+            
+            .file-viewer-name {
+                font-size: 1rem;
+            }
+            
             .archive-grid {
                 grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             }
@@ -1712,17 +2098,35 @@
                 </div>
                 
                 <div class="archive-instructions">
-                    <p><strong>Instructions:</strong> Upload and organize family photos, documents, and other files. Create folders to keep everything organized. Click on folders to navigate, and click on files to view or download them.</p>
+                    <p><strong>Instructions:</strong> Upload and organize family photos, documents, and other files. Create folders to keep everything organized. Drag files between folders to move them.</p>
                 </div>
                 
-                <div class="archive-breadcrumb" id="archiveBreadcrumb">
-                    <span class="breadcrumb-item active">Archive</span>
-                </div>
-                
-                <div class="archive-content" id="archiveContent">
-                    <div class="empty-state">
-                        <p>📂 No files or folders yet</p>
-                        <p class="empty-state-hint">Click "Upload Files" to add photos, documents, and other files to your family archive</p>
+                <div class="archive-layout">
+                    <!-- Left sidebar with folder tree -->
+                    <div class="archive-sidebar">
+                        <div class="sidebar-header">
+                            <h3>📁 Folders</h3>
+                        </div>
+                        <div class="folder-tree" id="folderTree">
+                            <div class="folder-tree-item root-folder active" data-path="">
+                                <span class="folder-icon">🏠</span>
+                                <span class="folder-name">Archive</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Main content area -->
+                    <div class="archive-main">
+                        <div class="archive-breadcrumb" id="archiveBreadcrumb">
+                            <span class="breadcrumb-item active">Archive</span>
+                        </div>
+                        
+                        <div class="archive-content" id="archiveContent">
+                            <div class="empty-state">
+                                <p>📂 No files or folders yet</p>
+                                <p class="empty-state-hint">Click "Upload Files" or "Create Folder" to get started</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -1747,6 +2151,13 @@
                     <svg id="connectionsSvg" class="connections-svg"></svg>
                     <div class="grid-dots" id="gridDots"></div>
                     <div class="person-tiles" id="personTiles"></div>
+                </div>
+                
+                <!-- Mobile Controls -->
+                <div class="mobile-controls" id="mobileControls">
+                    <button class="mobile-control-btn" id="zoomOutBtn" title="Zoom Out (Make text smaller)">🔍−</button>
+                    <button class="mobile-control-btn" id="zoomInBtn" title="Zoom In (Make text larger)">🔍+</button>
+                    <button class="mobile-control-btn" id="fullscreenBtn" title="Fullscreen Tree">⛶</button>
                 </div>
             </div>
         </div>
@@ -1806,20 +2217,35 @@
             <div class="settings-section">
                 <h3>Tree Editor</h3>
                 <button class="btn-tool settings-btn-full" id="editTreeBtnSettings">✏️ Edit Tree</button>
-                <p class="settings-hint">Enable editing mode to add people, draw connections, and rearrange the family tree.</p>
             </div>
             
             <div class="settings-section">
                 <h3>Configuration Files</h3>
                 <button class="btn-tool settings-btn-full" id="downloadConfigBtn">💾 Download Configuration File</button>
-                <p class="settings-hint">Save your entire family tree (including positions and connections) to a file.</p>
-                
                 <button class="btn-tool settings-btn-full" id="uploadConfigBtn">📂 Upload Configuration File</button>
                 <input type="file" id="configFileInput" accept=".json" style="display: none;">
-                <p class="settings-hint">Load a previously saved family tree configuration.</p>
             </div>
         </div>
     </div>
+
+    <!-- File Viewer Modal -->
+    <div class="file-viewer-modal" id="fileViewerModal">
+        <div class="file-viewer-header">
+            <span class="file-viewer-name" id="fileViewerName">File Name</span>
+            <button class="close-viewer" onclick="closeFileViewer()">✕</button>
+        </div>
+        <div class="file-viewer-content">
+            <button class="nav-arrow nav-left" id="prevFileBtn" onclick="navigateFile(-1)">‹</button>
+            <div class="file-display" id="fileDisplay">
+                <!-- File content will be displayed here -->
+            </div>
+            <button class="nav-arrow nav-right" id="nextFileBtn" onclick="navigateFile(1)">›</button>
+        </div>
+        <div class="file-viewer-actions">
+            <button class="btn-tool" onclick="downloadCurrentFile()">📥 Download</button>
+        </div>
+    </div>
+    <div class="modal-backdrop" id="modalBackdrop" onclick="closeFileViewer()"></div>
 
     <!-- Dossier Panel -->
     <div class="dossier-panel" id="dossierPanel">
@@ -2160,8 +2586,8 @@
         let nextPersonId = 1;
         let selectedTile = null;
         const GRID_SIZE = 40;
-        let CANVAS_WIDTH = 2000;
-        let CANVAS_HEIGHT = 1500;
+        let CANVAS_WIDTH = 1200;
+        let CANVAS_HEIGHT = 900;
         const EXPANSION_MARGIN = 100; // How close to edge before expanding - reduced for less aggressive expansion
         let canvasOffsetX = 0; // Track how much we've shifted left
         let canvasOffsetY = 0; // Track how much we've shifted up
@@ -2758,6 +3184,9 @@
                         document.querySelectorAll('.person-tile').forEach(tile => {
                             tile.style.cursor = 'grab';
                         });
+                        
+                        // Enable data table editing
+                        enableDataTableEditing();
                     } else {
                         // Exit edit mode
                         editingControls.style.display = 'none';
@@ -2773,6 +3202,9 @@
                         });
                         selectedPersons = [];
                         selectedForLine = [];
+                        
+                        // Disable data table editing
+                        disableDataTableEditing();
                         
                         // Trim canvas to remove excessive unused space
                         trimCanvasToContent();
@@ -3591,14 +4023,14 @@
                 const notes = person.notes || '';
                 
                 row.innerHTML = `
-                    <td><textarea data-field="name" rows="1">${name}</textarea></td>
-                    <td><input type="text" value="${birthDate}" data-field="birthDate"></td>
-                    <td><textarea data-field="birthPlace" rows="1">${birthPlace}</textarea></td>
-                    <td><input type="text" value="${deathDate}" data-field="deathDate"></td>
-                    <td><textarea data-field="parents" rows="1">${parents}</textarea></td>
-                    <td><textarea data-field="spouse" rows="1">${spouse}</textarea></td>
-                    <td><textarea data-field="notes" rows="1">${notes}</textarea></td>
-                    <td><button class="btn-delete" data-person-id="${person.id}">Delete</button></td>
+                    <td><textarea data-field="name" rows="1" readonly>${name}</textarea></td>
+                    <td><input type="text" value="${birthDate}" data-field="birthDate" readonly></td>
+                    <td><textarea data-field="birthPlace" rows="1" readonly>${birthPlace}</textarea></td>
+                    <td><input type="text" value="${deathDate}" data-field="deathDate" readonly></td>
+                    <td><textarea data-field="parents" rows="1" readonly>${parents}</textarea></td>
+                    <td><textarea data-field="spouse" rows="1" readonly>${spouse}</textarea></td>
+                    <td><textarea data-field="notes" rows="1" readonly>${notes}</textarea></td>
+                    <td><button class="btn-delete" data-person-id="${person.id}" style="display: none;">Delete</button></td>
                 `;
                 
                 tbody.appendChild(row);
@@ -3800,6 +4232,47 @@
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
+        // Enable/disable data table editing
+        function enableDataTableEditing() {
+            const dataTable = document.getElementById('dataTable');
+            if (!dataTable) return;
+            
+            // Enable all inputs and textareas
+            dataTable.querySelectorAll('input, textarea').forEach(field => {
+                field.removeAttribute('readonly');
+            });
+            
+            // Show delete buttons
+            dataTable.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.style.display = 'inline-block';
+            });
+            
+            // Make rows draggable
+            dataTable.querySelectorAll('.draggable-row').forEach(row => {
+                row.draggable = true;
+            });
+        }
+
+        function disableDataTableEditing() {
+            const dataTable = document.getElementById('dataTable');
+            if (!dataTable) return;
+            
+            // Disable all inputs and textareas
+            dataTable.querySelectorAll('input, textarea').forEach(field => {
+                field.setAttribute('readonly', 'readonly');
+            });
+            
+            // Hide delete buttons
+            dataTable.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.style.display = 'none';
+            });
+            
+            // Make rows non-draggable
+            dataTable.querySelectorAll('.draggable-row').forEach(row => {
+                row.draggable = false;
+            });
+        }
+
         function updatePersonData(personId, field, value) {
             const person = persons.find(p => p.id === personId);
             if (person) {
@@ -3964,6 +4437,106 @@
 
         // Archive rendering and management functions
         function renderArchive() {
+            renderFolderTree();
+            renderArchiveContent();
+        }
+        
+        function renderFolderTree() {
+            const folderTree = document.getElementById('folderTree');
+            if (!folderTree) return;
+            
+            // Start with root - add files listing
+            const rootFiles = archiveFiles[''] || [];
+            const sortedRootFiles = rootFiles.sort((a, b) => a.name.localeCompare(b.name));
+            const rootHasFiles = sortedRootFiles.length > 0;
+            
+            let html = `
+                <div class="folder-tree-item root-folder ${currentPath === '' ? 'active' : ''}" data-folder-path="">
+                    <span class="folder-icon">🏠</span>
+                    <span class="folder-name" onclick="navigateToPath('')" style="flex: 1;">Archive</span>
+                    ${rootHasFiles ? `<button class="folder-toggle" onclick="event.stopPropagation(); toggleFolderFiles('')" data-folder="">▶</button>` : ''}
+                </div>
+                ${rootHasFiles ? `<div class="folder-files-dropdown" id="files-"></div>` : ''}
+            `;
+            
+            // Get all unique folder paths
+            const allFolders = Object.keys(archiveFiles).filter(path => path !== '').sort();
+            
+            // Render folder tree hierarchically
+            allFolders.forEach(path => {
+                const depth = path.split('/').length;
+                const folderName = path.split('/').pop();
+                const isActive = currentPath === path;
+                const depthClass = depth === 1 ? 'child' : 'grandchild';
+                const files = archiveFiles[path] || [];
+                const sortedFiles = files.sort((a, b) => a.name.localeCompare(b.name));
+                const hasFiles = sortedFiles.length > 0;
+                
+                html += `
+                    <div class="folder-tree-item ${depthClass} ${isActive ? 'active' : ''}" 
+                         data-path="${path}" data-folder-path="${path}">
+                        <span class="folder-icon">📁</span>
+                        <span class="folder-name" onclick="navigateToPath('${path}')" style="flex: 1;">${folderName}</span>
+                        ${hasFiles ? `<button class="folder-toggle" onclick="event.stopPropagation(); toggleFolderFiles('${path}')" data-folder="${path}">▶</button>` : ''}
+                        <span class="folder-actions">
+                            <button class="folder-action-btn" onclick="event.stopPropagation(); renameFolder('${path}')" title="Rename">✏️</button>
+                            <button class="folder-action-btn" onclick="event.stopPropagation(); deleteFolder('${path}')" title="Delete">🗑️</button>
+                        </span>
+                    </div>
+                    ${hasFiles ? `<div class="folder-files-dropdown" id="files-${path.replace(/\//g, '-')}"></div>` : ''}
+                `;
+            });
+            
+            folderTree.innerHTML = html;
+            
+            // Render file lists for all folders
+            renderAllFileLists();
+        }
+        
+        function renderAllFileLists() {
+            // Render files for root
+            const rootFiles = archiveFiles[''] || [];
+            const sortedRootFiles = rootFiles.sort((a, b) => a.name.localeCompare(b.name));
+            renderFileList('', sortedRootFiles);
+            
+            // Render files for all other folders
+            Object.keys(archiveFiles).filter(path => path !== '').forEach(path => {
+                const files = archiveFiles[path] || [];
+                const sortedFiles = files.sort((a, b) => a.name.localeCompare(b.name));
+                renderFileList(path, sortedFiles);
+            });
+        }
+        
+        function renderFileList(folderPath, files) {
+            const dropdownId = `files-${folderPath.replace(/\//g, '-')}`;
+            const dropdown = document.getElementById(dropdownId);
+            if (!dropdown) return;
+            
+            let html = '';
+            files.forEach(file => {
+                const icon = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name) ? '🖼️' : '📄';
+                html += `
+                    <div class="folder-file-item" onclick="openFileViewer('${folderPath}', '${file.name}')">
+                        <span>${icon}</span>
+                        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${file.name}</span>
+                    </div>
+                `;
+            });
+            dropdown.innerHTML = html;
+        }
+        
+        function toggleFolderFiles(folderPath) {
+            const dropdownId = `files-${folderPath.replace(/\//g, '-')}`;
+            const dropdown = document.getElementById(dropdownId);
+            const toggle = document.querySelector(`[data-folder="${folderPath}"]`);
+            
+            if (dropdown && toggle) {
+                dropdown.classList.toggle('open');
+                toggle.classList.toggle('open');
+            }
+        }
+        
+        function renderArchiveContent() {
             const content = document.getElementById('archiveContent');
             const breadcrumb = document.getElementById('archiveBreadcrumb');
             
@@ -3994,6 +4567,9 @@
                 files.push(...archiveFiles[currentPath]);
             }
             
+            // Sort files alphabetically
+            files.sort((a, b) => a.name.localeCompare(b.name));
+            
             // Render content
             if (folders.size === 0 && files.length === 0) {
                 content.innerHTML = `
@@ -4007,10 +4583,16 @@
             
             let html = '<div class="archive-grid">';
             
-            // Add folders
+            // Add folders (with drop zones)
             folders.forEach(folder => {
+                const folderPath = currentPath ? currentPath + '/' + folder : folder;
                 html += `
-                    <div class="archive-item folder" onclick="navigateToPath('${currentPath ? currentPath + '/' : ''}${folder}')">
+                    <div class="archive-item folder" 
+                         data-folder-path="${folderPath}"
+                         ondragover="event.preventDefault(); event.currentTarget.classList.add('drag-over');"
+                         ondragleave="event.currentTarget.classList.remove('drag-over');"
+                         ondrop="handleFileDrop(event, '${folderPath}')"
+                         onclick="navigateToPath('${folderPath}')">
                         <div class="archive-item-icon"></div>
                         <div class="archive-item-name">${folder}</div>
                         <div class="archive-item-type">Folder</div>
@@ -4018,12 +4600,19 @@
                 `;
             });
             
-            // Add files
-            files.forEach(file => {
+            // Add files (draggable) - open in viewer instead of download
+            files.forEach((file, index) => {
                 const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
                 const itemClass = isImage ? 'image' : 'file';
                 html += `
-                    <div class="archive-item ${itemClass}" onclick="downloadFile('${currentPath}', '${file.name}')">
+                    <div class="archive-item ${itemClass}" 
+                         draggable="true"
+                         data-file-index="${index}"
+                         data-file-name="${file.name}"
+                         data-file-path="${currentPath}"
+                         ondragstart="handleFileDragStart(event)"
+                         ondragend="handleFileDragEnd(event)"
+                         onclick="openFileViewer('${currentPath}', '${file.name}')">
                         <div class="archive-item-icon"></div>
                         <div class="archive-item-name">${file.name}</div>
                         <div class="archive-item-type">${formatFileSize(file.size)}</div>
@@ -4033,6 +4622,107 @@
             
             html += '</div>';
             content.innerHTML = html;
+        }
+        
+        // Drag and drop handlers
+        let draggedFile = null;
+        
+        function handleFileDragStart(event) {
+            const filePath = event.currentTarget.dataset.filePath;
+            const fileName = event.currentTarget.dataset.fileName;
+            draggedFile = { path: filePath, name: fileName };
+            event.currentTarget.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleFileDragEnd(event) {
+            event.currentTarget.classList.remove('dragging');
+        }
+        
+        function handleFileDrop(event, targetFolderPath) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.classList.remove('drag-over');
+            
+            if (!draggedFile) return;
+            
+            // Find the file in the source folder
+            const sourceFiles = archiveFiles[draggedFile.path];
+            if (!sourceFiles) return;
+            
+            const fileIndex = sourceFiles.findIndex(f => f.name === draggedFile.name);
+            if (fileIndex === -1) return;
+            
+            // Remove from source
+            const file = sourceFiles.splice(fileIndex, 1)[0];
+            
+            // Add to target
+            if (!archiveFiles[targetFolderPath]) {
+                archiveFiles[targetFolderPath] = [];
+            }
+            archiveFiles[targetFolderPath].push(file);
+            
+            // Re-render
+            renderArchive();
+            draggedFile = null;
+        }
+        
+        function renameFolder(oldPath) {
+            const oldName = oldPath.split('/').pop();
+            const newName = prompt('Enter new folder name:', oldName);
+            if (!newName || newName === oldName) return;
+            
+            // Calculate new path
+            const pathParts = oldPath.split('/');
+            pathParts[pathParts.length - 1] = newName;
+            const newPath = pathParts.join('/');
+            
+            // Check if new path already exists
+            if (archiveFiles[newPath]) {
+                alert('A folder with that name already exists');
+                return;
+            }
+            
+            // Move the folder and all subfolders
+            const foldersToMove = Object.keys(archiveFiles).filter(path => 
+                path === oldPath || path.startsWith(oldPath + '/')
+            );
+            
+            foldersToMove.forEach(path => {
+                const newFolderPath = path.replace(oldPath, newPath);
+                archiveFiles[newFolderPath] = archiveFiles[path];
+                delete archiveFiles[path];
+            });
+            
+            // Update current path if we're in the renamed folder
+            if (currentPath === oldPath || currentPath.startsWith(oldPath + '/')) {
+                currentPath = currentPath.replace(oldPath, newPath);
+            }
+            
+            renderArchive();
+        }
+        
+        function deleteFolder(path) {
+            if (!confirm(`Delete folder "${path.split('/').pop()}" and all its contents?`)) {
+                return;
+            }
+            
+            // Delete the folder and all subfolders
+            const foldersToDelete = Object.keys(archiveFiles).filter(p => 
+                p === path || p.startsWith(path + '/')
+            );
+            
+            foldersToDelete.forEach(p => {
+                delete archiveFiles[p];
+            });
+            
+            // Navigate to parent if we were in the deleted folder
+            if (currentPath === path || currentPath.startsWith(path + '/')) {
+                const parentPath = path.split('/').slice(0, -1).join('/');
+                currentPath = parentPath;
+            }
+            
+            renderArchive();
         }
 
         function navigateToPath(path) {
@@ -4078,6 +4768,144 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+        
+        // File Viewer Functions
+        let currentViewerPath = '';
+        let currentViewerFiles = [];
+        let currentViewerIndex = 0;
+        
+        function openFileViewer(path, filename) {
+            const files = archiveFiles[path];
+            if (!files) return;
+            
+            // Sort files alphabetically
+            currentViewerFiles = [...files].sort((a, b) => a.name.localeCompare(b.name));
+            currentViewerPath = path;
+            currentViewerIndex = currentViewerFiles.findIndex(f => f.name === filename);
+            
+            if (currentViewerIndex === -1) return;
+            
+            displayFile(currentViewerIndex);
+            
+            const modal = document.getElementById('fileViewerModal');
+            const backdrop = document.getElementById('modalBackdrop');
+            modal.classList.add('active');
+            backdrop.classList.add('active');
+            
+            // Add keyboard navigation
+            document.addEventListener('keydown', handleViewerKeypress);
+            
+            // Add touch swipe support
+            setupTouchSwipe();
+        }
+        
+        function closeFileViewer() {
+            const modal = document.getElementById('fileViewerModal');
+            const backdrop = document.getElementById('modalBackdrop');
+            modal.classList.remove('active');
+            backdrop.classList.remove('active');
+            
+            // Remove keyboard listener
+            document.removeEventListener('keydown', handleViewerKeypress);
+        }
+        
+        function displayFile(index) {
+            const file = currentViewerFiles[index];
+            if (!file) return;
+            
+            const fileDisplay = document.getElementById('fileDisplay');
+            const fileName = document.getElementById('fileViewerName');
+            const prevBtn = document.getElementById('prevFileBtn');
+            const nextBtn = document.getElementById('nextFileBtn');
+            
+            fileName.textContent = file.name;
+            
+            // Update navigation buttons
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === currentViewerFiles.length - 1;
+            
+            // Display file based on type
+            const url = URL.createObjectURL(file.data);
+            
+            if (/\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)) {
+                // Image
+                fileDisplay.innerHTML = `<img src="${url}" alt="${file.name}" />`;
+            } else if (/\.pdf$/i.test(file.name)) {
+                // PDF
+                fileDisplay.innerHTML = `<iframe src="${url}" width="100%" height="100%"></iframe>`;
+            } else if (/\.(txt|md|json|csv)$/i.test(file.name)) {
+                // Text file - read and display
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    fileDisplay.innerHTML = `<pre style="white-space: pre-wrap; padding: 2rem; text-align: left; max-width: 800px;">${e.target.result}</pre>`;
+                };
+                reader.readAsText(file.data);
+            } else {
+                // Other files - show download option
+                fileDisplay.innerHTML = `
+                    <div style="text-align: center;">
+                        <p style="margin-bottom: 1rem;">Preview not available for this file type</p>
+                        <button class="btn-tool" onclick="downloadCurrentFile()">📥 Download File</button>
+                    </div>
+                `;
+            }
+        }
+        
+        function navigateFile(direction) {
+            currentViewerIndex += direction;
+            if (currentViewerIndex < 0) currentViewerIndex = 0;
+            if (currentViewerIndex >= currentViewerFiles.length) currentViewerIndex = currentViewerFiles.length - 1;
+            displayFile(currentViewerIndex);
+        }
+        
+        function downloadCurrentFile() {
+            if (currentViewerIndex >= 0 && currentViewerIndex < currentViewerFiles.length) {
+                const file = currentViewerFiles[currentViewerIndex];
+                downloadFile(currentViewerPath, file.name);
+            }
+        }
+        
+        function handleViewerKeypress(e) {
+            if (e.key === 'ArrowLeft') {
+                navigateFile(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigateFile(1);
+            } else if (e.key === 'Escape') {
+                closeFileViewer();
+            }
+        }
+        
+        // Touch swipe support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        function setupTouchSwipe() {
+            const fileDisplay = document.getElementById('fileDisplay');
+            
+            fileDisplay.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+            
+            fileDisplay.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, { passive: true });
+        }
+        
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swiped left - next file
+                    navigateFile(1);
+                } else {
+                    // Swiped right - previous file
+                    navigateFile(-1);
+                }
+            }
+        }
 
         // Detect mobile and show helpful hints
         function isMobileDevice() {
@@ -4092,9 +4920,77 @@
             }
         }
         
-        // Initialize grid on page load since Tree tab is active by default
+        // Mobile zoom controls (page-level zoom, not tree zoom)
+        let currentZoomLevel = 100; // percentage
+        
+        function setupMobileControls() {
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            
+            if (zoomOutBtn) {
+                zoomOutBtn.addEventListener('click', () => {
+                    currentZoomLevel = Math.max(50, currentZoomLevel - 10);
+                    applyZoom();
+                });
+            }
+            
+            if (zoomInBtn) {
+                zoomInBtn.addEventListener('click', () => {
+                    currentZoomLevel = Math.min(200, currentZoomLevel + 10);
+                    applyZoom();
+                });
+            }
+            
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', toggleTreeFullscreen);
+            }
+        }
+        
+        function applyZoom() {
+            // Apply zoom to the entire page
+            document.body.style.fontSize = `${currentZoomLevel}%`;
+        }
+        
+        function toggleTreeFullscreen() {
+            const treeBuilder = document.querySelector('.tree-builder');
+            
+            if (!document.fullscreenElement) {
+                // Enter fullscreen
+                if (treeBuilder.requestFullscreen) {
+                    treeBuilder.requestFullscreen();
+                } else if (treeBuilder.webkitRequestFullscreen) {
+                    treeBuilder.webkitRequestFullscreen();
+                } else if (treeBuilder.msRequestFullscreen) {
+                    treeBuilder.msRequestFullscreen();
+                }
+                
+                // Update button icon
+                document.getElementById('fullscreenBtn').textContent = '⛶';
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+        
+        // Listen for fullscreen changes to update button
+        document.addEventListener('fullscreenchange', () => {
+            const btn = document.getElementById('fullscreenBtn');
+            if (btn) {
+                btn.textContent = document.fullscreenElement ? '✕' : '⛶';
+            }
+        });
+        
+        // Initialize mobile controls on page load
         window.addEventListener('DOMContentLoaded', () => {
             initializeGrid();
+            setupMobileControls();
         });
     </script>
 </body>
