@@ -65,7 +65,6 @@
             color: var(--ink-faded);
             margin-top: 0.5rem;
             letter-spacing: 0.15em;
-            font-style: italic;
         }
 
         /* Navigation */
@@ -392,7 +391,6 @@
         .person-dates {
             font-size: 0.7rem;
             color: var(--ink-faded);
-            font-style: italic;
             line-height: 1.3;
         }
 
@@ -421,7 +419,6 @@
             text-align: center;
             font-size: 0.9rem;
             color: var(--sepia);
-            font-style: italic;
             margin-bottom: 1rem;
         }
 
@@ -510,7 +507,6 @@
         .settings-hint {
             font-size: 0.85rem;
             color: var(--ink-faded);
-            font-style: italic;
             margin-top: 0.5rem;
             margin-bottom: 1rem;
             line-height: 1.4;
@@ -747,7 +743,6 @@
         .dossier-subtitle {
             font-size: 0.9rem;
             color: var(--ink-faded);
-            font-style: italic;
         }
 
         .dossier-content {
@@ -1192,7 +1187,6 @@
         .mode-indicator {
             font-size: 0.85rem;
             color: var(--ink-dark);
-            font-style: italic;
             padding: 0.5rem 1rem;
             background: var(--parchment);
             border: 1px solid var(--border-color);
@@ -1212,6 +1206,15 @@
             width: 100%;
             max-width: 100%;
             touch-action: pan-x pan-y pinch-zoom; /* Enable pinch zoom on mobile */
+        }
+        
+        /* Selection Box */
+        .selection-box {
+            position: absolute;
+            border: 2px dashed var(--sepia);
+            background: rgba(112, 66, 20, 0.1);
+            pointer-events: none;
+            z-index: 1000;
         }
         
         /* Mobile Controls */
@@ -1361,7 +1364,6 @@
         .tile-dates {
             font-size: 0.65rem;
             color: var(--ink-faded);
-            font-style: italic;
             line-height: 1.2;
             word-wrap: break-word;
             width: 100%;
@@ -1384,6 +1386,46 @@
 
         .person-tile:hover .tile-remove {
             display: block;
+        }
+
+        /* Marriage Node Styles */
+        .marriage-node {
+            position: absolute;
+            background: var(--sepia);
+            border: 2px solid var(--ink-dark);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px var(--shadow);
+            pointer-events: auto;
+            z-index: 2;
+            transition: transform 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            color: var(--parchment);
+            cursor: grab;
+        }
+
+        .marriage-node:active {
+            cursor: grabbing;
+        }
+
+        .marriage-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 16px var(--shadow);
+        }
+
+        .marriage-node.selected {
+            border-color: var(--ink-dark);
+            border-width: 3px;
+            box-shadow: 0 4px 16px rgba(112, 66, 20, 0.5);
+        }
+
+        .marriage-node.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
         }
 
         /* Data View Styles */
@@ -2142,6 +2184,7 @@
                     <div class="builder-controls">
                         <div id="editingControls" style="display: none;">
                             <button class="btn-tool" id="addPersonBtn">+ Add Person</button>
+                            <button class="btn-tool" id="addMarriageBtn">💍 Add Marriage Node</button>
                             <button class="btn-tool" id="drawLinesBtn">Draw Lines</button>
                         </div>
                         <label class="mode-indicator" id="modeIndicator">View Mode</label>
@@ -2224,6 +2267,11 @@
                 <button class="btn-tool settings-btn-full" id="downloadConfigBtn">💾 Download Configuration File</button>
                 <button class="btn-tool settings-btn-full" id="uploadConfigBtn">📂 Upload Configuration File</button>
                 <input type="file" id="configFileInput" accept=".json" style="display: none;">
+                
+                <div class="settings-hint" style="margin-top: 1.5rem; padding: 1rem; background: var(--aged-paper); border-left: 3px solid var(--sepia);">
+                    <strong>💡 Download Offline Version:</strong><br>
+                    To download an offline version of this website (html), right-click on the page, select "inspect", go to the sources tab, right-click on "index.html" and then "save as...".
+                </div>
             </div>
         </div>
     </div>
@@ -2584,6 +2632,8 @@
         let connections = [];
         let persons = [];
         let nextPersonId = 1;
+        let marriageNodes = [];
+        let nextMarriageId = 1;
         let selectedTile = null;
         const GRID_SIZE = 40;
         let CANVAS_WIDTH = 1200;
@@ -3167,6 +3217,12 @@
             // Edit Tree Button - Toggle edit mode (now in settings panel)
             if (editTreeBtn) {
                 editTreeBtn.addEventListener('click', () => {
+                    // Prevent editing in offline mode
+                    if (isOffline) {
+                        alert('Cannot edit when file is opened offline. Please open this file from a web server or use the online version to make edits.');
+                        return;
+                    }
+                    
                     editMode = !editMode;
                     editTreeBtn.classList.toggle('active');
                     
@@ -3178,7 +3234,7 @@
                         editingControls.style.display = 'flex';
                         editingControls.style.gap = '1rem';
                         gridDots.style.display = 'block';
-                        modeIndicator.textContent = 'Edit Mode';
+                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
                         
                         // Enable tile dragging
                         document.querySelectorAll('.person-tile').forEach(tile => {
@@ -3214,6 +3270,12 @@
 
             // Add Person Button - Attach blank tile to cursor
             addPersonBtn.addEventListener('click', () => {
+                // Prevent adding in offline mode
+                if (isOffline) {
+                    alert('Cannot add persons when file is opened offline. Please open this file from a web server or use the online version to make edits.');
+                    return;
+                }
+                
                 modeIndicator.textContent = 'Add Person';
                 
                 // Create ghost tile that follows cursor
@@ -3289,7 +3351,7 @@
                     if (drawLinesMode) {
                         modeIndicator.textContent = 'Draw Lines Mode';
                     } else {
-                        modeIndicator.textContent = 'Edit Mode';
+                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
                     }
                 };
                 
@@ -3303,8 +3365,95 @@
                 }, 150);
             });
 
+            // Add Marriage Node Button
+            const addMarriageBtn = document.getElementById('addMarriageBtn');
+            addMarriageBtn.addEventListener('click', () => {
+                // Prevent adding in offline mode
+                if (isOffline) {
+                    alert('Cannot add marriage nodes when file is opened offline. Please open this file from a web server or use the online version to make edits.');
+                    return;
+                }
+                
+                modeIndicator.textContent = 'Add Marriage Node: Click to place';
+                
+                // Create ghost node that follows cursor
+                const ghostNode = document.createElement('div');
+                ghostNode.className = 'marriage-node';
+                ghostNode.style.position = 'fixed';
+                ghostNode.style.pointerEvents = 'none';
+                ghostNode.style.opacity = '0.7';
+                ghostNode.style.zIndex = '10000';
+                ghostNode.innerHTML = '💍';
+                document.body.appendChild(ghostNode);
+                
+                let lastSnapX = 200;
+                let lastSnapY = 200;
+                let isActive = true;
+                
+                const moveHandler = (e) => {
+                    if (!isActive) return;
+                    
+                    const canvas = document.getElementById('gridCanvas');
+                    const canvasRect = canvas.getBoundingClientRect();
+                    
+                    let canvasX = e.clientX - canvasRect.left + canvas.scrollLeft;
+                    let canvasY = e.clientY - canvasRect.top + canvas.scrollTop;
+                    
+                    let snapX = Math.round(canvasX / GRID_SIZE) * GRID_SIZE;
+                    let snapY = Math.round(canvasY / GRID_SIZE) * GRID_SIZE;
+                    
+                    lastSnapX = snapX;
+                    lastSnapY = snapY;
+                    
+                    let screenX = snapX - canvas.scrollLeft + canvasRect.left;
+                    let screenY = snapY - canvas.scrollTop + canvasRect.top;
+                    
+                    ghostNode.style.left = `${screenX - 15}px`;
+                    ghostNode.style.top = `${screenY - 15}px`;
+                };
+                
+                const cleanup = () => {
+                    isActive = false;
+                    if (document.body.contains(ghostNode)) {
+                        document.body.removeChild(ghostNode);
+                    }
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('click', clickHandler);
+                };
+                
+                const clickHandler = (e) => {
+                    if (!isActive) return;
+                    
+                    const x = lastSnapX;
+                    const y = lastSnapY;
+                    
+                    cleanup();
+                    
+                    addMarriageNode(x, y);
+                    
+                    if (drawLinesMode) {
+                        modeIndicator.textContent = 'Draw Lines Mode';
+                    } else {
+                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
+                    }
+                };
+                
+                document.addEventListener('mousemove', moveHandler);
+                setTimeout(() => {
+                    if (isActive) {
+                        document.addEventListener('click', clickHandler);
+                    }
+                }, 150);
+            });
+
             // Draw Lines Button
             drawLinesBtn.addEventListener('click', () => {
+                // Prevent drawing in offline mode
+                if (isOffline) {
+                    alert('Cannot draw lines when file is opened offline. Please open this file from a web server or use the online version to make edits.');
+                    return;
+                }
+                
                 drawLinesMode = !drawLinesMode;
                 drawLinesBtn.classList.toggle('active');
                 selectedForLine = [];
@@ -3318,11 +3467,169 @@
                     modeIndicator.textContent = 'Draw Lines Mode: Click two tiles to connect them • Click any line to delete it • Click "Draw Lines" again to exit';
                     gridCanvas.style.cursor = 'crosshair';
                 } else {
-                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Double-click to edit details';
+                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select • Double-click to edit details';
                     gridCanvas.style.cursor = 'default';
                 }
             });
         }
+
+        // Ctrl+Drag Box Selection
+        (function setupBoxSelection() {
+            const gridCanvas = document.getElementById('gridCanvas');
+            const personTiles = document.getElementById('personTiles');
+            let isBoxSelecting = false;
+            let selectionBox = null;
+            let startX, startY;
+            
+            gridCanvas.addEventListener('mousedown', (e) => {
+                // Only start box selection on ctrl+click in edit mode
+                if (!e.ctrlKey || !editMode || drawLinesMode) return;
+                
+                // Don't start if clicking on a tile or marriage node
+                if (e.target.closest('.person-tile') || e.target.closest('.marriage-node')) return;
+                
+                isBoxSelecting = true;
+                
+                // Get canvas-relative coordinates
+                const rect = gridCanvas.getBoundingClientRect();
+                startX = e.clientX - rect.left + gridCanvas.scrollLeft;
+                startY = e.clientY - rect.top + gridCanvas.scrollTop;
+                
+                // Create selection box
+                selectionBox = document.createElement('div');
+                selectionBox.className = 'selection-box';
+                selectionBox.style.left = startX + 'px';
+                selectionBox.style.top = startY + 'px';
+                selectionBox.style.width = '0px';
+                selectionBox.style.height = '0px';
+                personTiles.appendChild(selectionBox);
+                
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isBoxSelecting || !selectionBox) return;
+                
+                const rect = gridCanvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left + gridCanvas.scrollLeft;
+                const currentY = e.clientY - rect.top + gridCanvas.scrollTop;
+                
+                // Calculate box dimensions
+                const left = Math.min(startX, currentX);
+                const top = Math.min(startY, currentY);
+                const width = Math.abs(currentX - startX);
+                const height = Math.abs(currentY - startY);
+                
+                selectionBox.style.left = left + 'px';
+                selectionBox.style.top = top + 'px';
+                selectionBox.style.width = width + 'px';
+                selectionBox.style.height = height + 'px';
+            });
+            
+            document.addEventListener('mouseup', (e) => {
+                if (!isBoxSelecting || !selectionBox) return;
+                
+                const canvasRect = gridCanvas.getBoundingClientRect();
+                const currentX = e.clientX - canvasRect.left + gridCanvas.scrollLeft;
+                const currentY = e.clientY - canvasRect.top + gridCanvas.scrollTop;
+                
+                // Calculate final box dimensions (in canvas coordinates)
+                const boxLeft = Math.min(startX, currentX);
+                const boxTop = Math.min(startY, currentY);
+                const boxRight = Math.max(startX, currentX);
+                const boxBottom = Math.max(startY, currentY);
+                
+                console.log('Selection box:', boxLeft, boxTop, boxRight, boxBottom);
+                
+                // Clear previous selections
+                document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                
+                // Find all tiles and marriage nodes within the selection box
+                const tiles = document.querySelectorAll('.person-tile');
+                const nodes = document.querySelectorAll('.marriage-node');
+                const newSelectedPersons = [];
+                
+                tiles.forEach(tile => {
+                    // Get tile's actual position in canvas coordinates
+                    const tileRect = tile.getBoundingClientRect();
+                    const tileLeft = tileRect.left - canvasRect.left + gridCanvas.scrollLeft;
+                    const tileTop = tileRect.top - canvasRect.top + gridCanvas.scrollTop;
+                    const tileRight = tileLeft + tile.offsetWidth;
+                    const tileBottom = tileTop + tile.offsetHeight;
+                    
+                    console.log('Tile:', tile.dataset.id, tileLeft, tileTop, tileRight, tileBottom);
+                    
+                    // Check if tile intersects with selection box
+                    if (tileRight >= boxLeft && tileLeft <= boxRight &&
+                        tileBottom >= boxTop && tileTop <= boxBottom) {
+                        const personId = tile.dataset.id;
+                        newSelectedPersons.push(personId);
+                        tile.classList.add('selected');
+                        console.log('Selected tile:', personId);
+                    }
+                });
+                
+                // Also check marriage nodes
+                nodes.forEach(node => {
+                    const nodeRect = node.getBoundingClientRect();
+                    const nodeLeft = nodeRect.left - canvasRect.left + gridCanvas.scrollLeft;
+                    const nodeTop = nodeRect.top - canvasRect.top + gridCanvas.scrollTop;
+                    const nodeRight = nodeLeft + node.offsetWidth;
+                    const nodeBottom = nodeTop + node.offsetHeight;
+                    
+                    // Check if node intersects with selection box
+                    if (nodeRight >= boxLeft && nodeLeft <= boxRight &&
+                        nodeBottom >= boxTop && nodeTop <= boxBottom) {
+                        const nodeId = node.dataset.id;
+                        newSelectedPersons.push(nodeId);
+                        node.classList.add('selected');
+                        console.log('Selected node:', nodeId);
+                    }
+                });
+                
+                selectedPersons = newSelectedPersons;
+                console.log('Total selected:', selectedPersons.length);
+                
+                // Remove selection box
+                selectionBox.remove();
+                selectionBox = null;
+                isBoxSelecting = false;
+                
+                if (selectedPersons.length > 0) {
+                    modeIndicator.textContent = `Selected ${selectedPersons.length} item(s) • Drag to move group • Click elsewhere to deselect`;
+                } else {
+                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
+                }
+            });
+            
+            // Click on empty space to deselect all
+            gridCanvas.addEventListener('click', (e) => {
+                if (!editMode || drawLinesMode) return;
+                
+                // Only deselect if clicking on canvas itself (not a tile or marriage node)
+                if (!e.target.closest('.person-tile') && !e.target.closest('.marriage-node') && e.target === gridCanvas) {
+                    // Clear all selections
+                    document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+                    selectedPersons = [];
+                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
+                }
+            });
+            
+            // Escape key to clear selection
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && editMode && !drawLinesMode) {
+                    document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+                    selectedPersons = [];
+                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
+                }
+            });
+        })();
 
         // Add Person
         function addPerson(name, dates, x, y, deceased = false, inVitro = false, extraData = {}) {
@@ -3356,6 +3663,7 @@
             
             persons.push(person);
             renderPerson(person);
+            saveToLocalStorage();
             
             // Trim canvas to fit after adding
             setTimeout(() => trimCanvasToFit(), 100);
@@ -3464,6 +3772,14 @@
                         selectedPersons.push(person.id);
                     }
                 } else {
+                    // If clicking on a tile that's not in the selection, clear selection first
+                    if (!selectedPersons.includes(person.id)) {
+                        document.querySelectorAll('.person-tile.selected').forEach(t => {
+                            t.classList.remove('selected');
+                        });
+                        selectedPersons = [];
+                    }
+                    
                     // Start dragging
                     isDragging = true;
                     tile.classList.add('dragging');
@@ -3506,19 +3822,32 @@
                 person.x = newX;
                 person.y = newY;
                 
-                // Move selected persons together
+                // Move selected items together (persons and marriage nodes)
                 if (selectedPersons.includes(person.id) && selectedPersons.length > 1) {
-                    selectedPersons.forEach(pid => {
-                        if (pid !== person.id) {
-                            const p = persons.find(ps => ps.id === pid);
+                    selectedPersons.forEach(itemId => {
+                        if (itemId !== person.id) {
+                            // Check if it's a person
+                            const p = persons.find(ps => ps.id === itemId);
                             if (p) {
                                 // Note: p.x and p.y were already shifted by checkAndExpandCanvas if needed
                                 p.x += deltaX;
                                 p.y += deltaY;
-                                const pTile = document.querySelector(`[data-id="${pid}"]`);
-                                if (pTile) {
+                                const pTile = document.querySelector(`[data-id="${itemId}"]`);
+                                if (pTile && pTile.classList.contains('person-tile')) {
                                     pTile.style.left = `${p.x - 70}px`;
                                     pTile.style.top = `${p.y - 45}px`;
+                                }
+                            }
+                            
+                            // Check if it's a marriage node
+                            const m = marriageNodes.find(mn => mn.id === itemId);
+                            if (m) {
+                                m.x += deltaX;
+                                m.y += deltaY;
+                                const mNode = document.querySelector(`[data-id="${itemId}"]`);
+                                if (mNode && mNode.classList.contains('marriage-node')) {
+                                    mNode.style.left = `${m.x - 15}px`;
+                                    mNode.style.top = `${m.y - 15}px`;
                                 }
                             }
                         }
@@ -3534,6 +3863,7 @@
                     tile.classList.remove('dragging');
                     // Trim canvas after drag completes
                     setTimeout(() => trimCanvasToFit(), 100);
+                    saveToLocalStorage();
                 }
             });
             
@@ -3607,12 +3937,163 @@
                     isDragging = false;
                     tile.classList.remove('dragging');
                     setTimeout(() => trimCanvasToFit(), 100);
+                    saveToLocalStorage();
                 }
             });
             
             console.log('About to append tile to personTiles'); // Debug
             personTiles.appendChild(tile);
             console.log('Tile appended successfully'); // Debug
+        }
+
+        // Marriage Node Functions
+        function addMarriageNode(x, y) {
+            const marriageNode = {
+                id: 'marriage_' + nextMarriageId++,
+                x: x,
+                y: y
+            };
+            
+            marriageNodes.push(marriageNode);
+            renderMarriageNode(marriageNode);
+            saveToLocalStorage();
+        }
+
+        function renderMarriageNode(node) {
+            const personTiles = document.getElementById('personTiles');
+            if (!personTiles) return;
+            
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'marriage-node';
+            nodeEl.dataset.id = node.id;
+            nodeEl.style.left = `${node.x - 15}px`;
+            nodeEl.style.top = `${node.y - 15}px`;
+            nodeEl.innerHTML = '💍';
+            nodeEl.style.cursor = editMode ? 'grab' : 'pointer';
+            
+            // Make draggable in edit mode
+            let isDragging = false;
+            let offsetX = 0;
+            let offsetY = 0;
+            
+            nodeEl.addEventListener('mousedown', (e) => {
+                if (!editMode) return;
+                if (drawLinesMode) {
+                    // Allow clicking for line drawing
+                    return;
+                }
+                
+                if (e.ctrlKey || e.metaKey) {
+                    // Multi-select
+                    nodeEl.classList.toggle('selected');
+                    const index = selectedPersons.indexOf(node.id);
+                    if (index > -1) {
+                        selectedPersons.splice(index, 1);
+                    } else {
+                        selectedPersons.push(node.id);
+                    }
+                } else {
+                    // If clicking on a node that's not in the selection, clear selection first
+                    if (!selectedPersons.includes(node.id)) {
+                        document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
+                            el.classList.remove('selected');
+                        });
+                        selectedPersons = [];
+                    }
+                    
+                    // Start dragging
+                    e.preventDefault();
+                    isDragging = true;
+                    nodeEl.classList.add('dragging');
+                }
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const canvas = document.getElementById('gridCanvas');
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                let canvasX = e.clientX - canvasRect.left + canvas.scrollLeft;
+                let canvasY = e.clientY - canvasRect.top + canvas.scrollTop;
+                
+                let snapX = Math.round(canvasX / GRID_SIZE) * GRID_SIZE;
+                let snapY = Math.round(canvasY / GRID_SIZE) * GRID_SIZE;
+                
+                const deltaX = snapX - node.x;
+                const deltaY = snapY - node.y;
+                
+                node.x = snapX;
+                node.y = snapY;
+                nodeEl.style.left = `${snapX - 15}px`;
+                nodeEl.style.top = `${snapY - 15}px`;
+                
+                // Move selected items together
+                if (selectedPersons.includes(node.id) && selectedPersons.length > 1) {
+                    selectedPersons.forEach(itemId => {
+                        if (itemId !== node.id) {
+                            // Check if it's a person
+                            const p = persons.find(ps => ps.id === itemId);
+                            if (p) {
+                                p.x += deltaX;
+                                p.y += deltaY;
+                                const pTile = document.querySelector(`[data-id="${itemId}"]`);
+                                if (pTile && pTile.classList.contains('person-tile')) {
+                                    pTile.style.left = `${p.x - 70}px`;
+                                    pTile.style.top = `${p.y - 45}px`;
+                                }
+                            }
+                            
+                            // Check if it's a marriage node
+                            const m = marriageNodes.find(mn => mn.id === itemId);
+                            if (m) {
+                                m.x += deltaX;
+                                m.y += deltaY;
+                                const mNode = document.querySelector(`[data-id="${itemId}"]`);
+                                if (mNode && mNode.classList.contains('marriage-node')) {
+                                    mNode.style.left = `${m.x - 15}px`;
+                                    mNode.style.top = `${m.y - 15}px`;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                redrawConnections();
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    nodeEl.classList.remove('dragging');
+                    saveToLocalStorage();
+                }
+            });
+            
+            // Handle line drawing clicks
+            nodeEl.addEventListener('click', (e) => {
+                if (!drawLinesMode) return;
+                e.stopPropagation();
+                
+                if (selectedForLine.length === 0) {
+                    selectedForLine.push(node.id);
+                    nodeEl.style.outline = '3px solid var(--sepia)';
+                } else if (selectedForLine.length === 1) {
+                    const id1 = selectedForLine[0];
+                    const id2 = node.id;
+                    
+                    if (id1 !== id2) {
+                        addConnection(id1, id2);
+                    }
+                    
+                    document.querySelectorAll('.person-tile, .marriage-node').forEach(el => {
+                        el.style.outline = 'none';
+                    });
+                    selectedForLine = [];
+                }
+            });
+            
+            personTiles.appendChild(nodeEl);
         }
 
         // Remove Person
@@ -3640,6 +4121,7 @@
             if (!exists) {
                 connections.push({ person1: person1Id, person2: person2Id });
                 redrawConnections();
+                saveToLocalStorage();
             }
         }
 
@@ -3647,6 +4129,7 @@
         function removeConnection(index) {
             connections.splice(index, 1);
             redrawConnections();
+            saveToLocalStorage();
         }
 
         // Redraw Connections - now calculates positions from person IDs
@@ -3655,16 +4138,21 @@
             svg.innerHTML = '';
             
             connections.forEach((conn, index) => {
-                const person1 = persons.find(p => p.id === conn.person1);
-                const person2 = persons.find(p => p.id === conn.person2);
+                // Find the entities (can be person or marriage node)
+                let entity1 = persons.find(p => p.id === conn.person1);
+                let entity2 = persons.find(p => p.id === conn.person2);
                 
-                if (!person1 || !person2) return;
+                // If not found in persons, check marriage nodes
+                if (!entity1) entity1 = marriageNodes.find(m => m.id === conn.person1);
+                if (!entity2) entity2 = marriageNodes.find(m => m.id === conn.person2);
+                
+                if (!entity1 || !entity2) return;
                 
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', person1.x);
-                line.setAttribute('y1', person1.y);
-                line.setAttribute('x2', person2.x);
-                line.setAttribute('y2', person2.y);
+                line.setAttribute('x1', entity1.x);
+                line.setAttribute('y1', entity1.y);
+                line.setAttribute('x2', entity2.x);
+                line.setAttribute('y2', entity2.y);
                 line.setAttribute('stroke', '#c4b89a');
                 line.setAttribute('stroke-width', '2');
                 line.classList.add('connection-line');
@@ -3842,6 +4330,7 @@
                     // Clear existing data
                     persons.length = 0; // Clear array properly
                     connections.length = 0; // Clear array properly
+                    marriageNodes.length = 0; // Clear marriage nodes
                     selectedPersons = [];
                     selectedForLine = [];
                     
@@ -3853,6 +4342,7 @@
                     
                     // Load persons
                     nextPersonId = config.nextPersonId || 1;
+                    nextMarriageId = config.nextMarriageId || 1;
                     config.persons.forEach((p, index) => {
                         // Ensure all properties are preserved
                         const person = {
@@ -3876,6 +4366,15 @@
                     });
                     
                     console.log('All persons rendered. Total:', persons.length);
+                    
+                    // Load marriage nodes
+                    if (config.marriageNodes && Array.isArray(config.marriageNodes)) {
+                        config.marriageNodes.forEach(m => {
+                            marriageNodes.push(m);
+                            renderMarriageNode(m);
+                        });
+                        console.log('Marriage nodes loaded:', marriageNodes.length);
+                    }
                     
                     // Load connections
                     if (config.connections && Array.isArray(config.connections)) {
@@ -3917,6 +4416,54 @@
                 }
             };
             reader.readAsText(file);
+        }
+
+        // Auto-Save Functions (Step 1)
+        const isOffline = window.location.protocol === 'file:';
+        const STORAGE_KEY = 'woodward_family_tree_config';
+        const LAST_SAVED_KEY = 'woodward_family_tree_last_saved';
+        
+        function getCurrentConfiguration() {
+            return {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                persons: persons.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    dates: p.dates,
+                    birthDate: p.birthDate,
+                    birthPlace: p.birthPlace,
+                    deathDate: p.deathDate,
+                    parents: p.parents,
+                    spouse: p.spouse,
+                    notes: p.notes,
+                    x: p.x,
+                    y: p.y,
+                    deceased: p.deceased,
+                    inVitro: p.inVitro
+                })),
+                marriageNodes: marriageNodes.map(m => ({
+                    id: m.id,
+                    x: m.x,
+                    y: m.y
+                })),
+                connections: connections,
+                nextPersonId: nextPersonId,
+                nextMarriageId: nextMarriageId
+            };
+        }
+        
+        function saveToLocalStorage() {
+            if (isOffline) return;
+            
+            try {
+                const config = getCurrentConfiguration();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+                localStorage.setItem(LAST_SAVED_KEY, new Date().toISOString());
+                console.log('Auto-saved to localStorage');
+            } catch (e) {
+                console.error('Failed to save:', e);
+            }
         }
 
         // Close dossier when clicking outside
@@ -4100,6 +4647,7 @@
                     });
                     persons.length = 0;
                     persons.push(...newOrder);
+                    saveToLocalStorage();
                 });
             });
         }
@@ -4289,6 +4837,7 @@
                         if (datesEl) datesEl.textContent = value;
                     }
                 }
+                saveToLocalStorage();
             }
         }
 
@@ -4312,6 +4861,7 @@
             // Remove any connections involving this person
             connections = connections.filter(c => c.person1 !== personId && c.person2 !== personId);
             redrawConnections();
+            saveToLocalStorage();
             
             // Refresh the current view
             if (isCardView) {
@@ -4422,6 +4972,11 @@
             const configFileInput = document.getElementById('configFileInput');
             if (uploadConfigBtn && configFileInput) {
                 uploadConfigBtn.addEventListener('click', () => {
+                    // Prevent uploading in offline mode
+                    if (isOffline) {
+                        alert('Cannot upload configuration when file is opened offline. Please open this file from a web server or use the online version.');
+                        return;
+                    }
                     configFileInput.click();
                 });
                 
