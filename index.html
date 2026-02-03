@@ -31,93 +31,123 @@
         }
 
         /* Header */
-        header {
+        /* Compact Top-Right Button Bar */
+        .top-right-buttons {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0;
+            z-index: 1000;
             background: var(--aged-paper);
-            border-bottom: 2px solid var(--border-color);
-            padding: 2rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0;
             box-shadow: 0 2px 8px var(--shadow);
-            position: relative;
         }
 
-        header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(to right, transparent, var(--border-color), transparent);
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            font-weight: normal;
-            letter-spacing: 0.1em;
-            text-align: center;
-            color: var(--ink-dark);
-            text-transform: uppercase;
-            font-variant: small-caps;
-        }
-
-        .subtitle {
-            text-align: center;
+        .top-right-buttons button {
+            background: var(--aged-paper);
+            border: none;
+            border-right: 2px solid var(--border-color);
+            padding: 0.75rem 1.25rem;
+            font-family: inherit;
             font-size: 0.9rem;
             color: var(--ink-faded);
-            margin-top: 0.5rem;
-            letter-spacing: 0.15em;
-        }
-
-        /* Navigation */
-        nav {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border-color);
-        }
-
-        nav button {
-            background: none;
-            border: none;
-            font-family: inherit;
-            font-size: 1rem;
-            color: var(--ink-faded);
             cursor: pointer;
-            padding: 0.5rem 1rem;
-            position: relative;
-            transition: color 0.3s;
+            transition: all 0.2s;
             letter-spacing: 0.05em;
+            text-transform: uppercase;
+            font-size: 0.85rem;
         }
 
-        nav button:hover {
+        .top-right-buttons button:last-child {
+            border-right: none;
+        }
+
+        .top-right-buttons button:hover {
+            background: var(--parchment);
             color: var(--sepia);
         }
 
-        nav button.active {
+        .top-right-buttons button.active {
+            background: var(--parchment);
             color: var(--ink-dark);
+            font-weight: 600;
+        }
+
+        /* Delete Zone (shown in edit mode) */
+        .delete-zone {
+            position: fixed;
+            top: 5rem;
+            right: 1rem;
+            width: 120px;
+            height: 120px;
+            background: var(--aged-paper);
+            border: 3px dashed #c44;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #c44;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s;
+        }
+
+        .delete-zone.drag-over {
+            background: #fee;
+            border-color: #a00;
+            color: #a00;
+            transform: scale(1.1);
+        }
+
+        .delete-zone .delete-label {
+            position: absolute;
+            bottom: 0.5rem;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        header {
+            display: none; /* Hide old header */
+        }
+
+        h1 {
+            display: none; /* Hide title */
+        }
+
+        .subtitle {
+            display: none;
+        }
+
+        /* Navigation - Hidden since buttons moved to corner */
+        nav {
+            display: none;
+        }
+
+        nav button {
+            display: none;
+        }
+
+        nav button:hover {
+            display: none;
+        }
+
+        nav button.active {
+            display: none;
         }
 
         nav button.active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--sepia);
+            display: none;
         }
 
-        /* Settings Button */
+        /* Settings Button - Hidden since moved to corner */
         .settings-btn {
-            position: absolute;
-            top: 2rem;
-            right: 1rem;
-            background: transparent;
-            border: 2px solid var(--border-color);
-            padding: 0.75rem 1.5rem;
-            font-family: inherit;
-            font-size: 0.9rem;
+            display: none;
+        }
             color: var(--ink-dark);
             cursor: pointer;
             transition: all 0.3s;
@@ -134,12 +164,14 @@
         .container {
             max-width: 100%;
             margin: 0;
-            padding: 1rem;
+            padding: 0;
+            height: 100vh;
         }
 
         .view {
             display: none;
             animation: fadeIn 0.6s ease-in;
+            height: 100%;
         }
 
         .view.active {
@@ -154,10 +186,12 @@
         /* Tree View */
         .tree-container {
             background: var(--parchment);
-            border: 2px solid var(--border-color);
-            box-shadow: 0 4px 20px var(--shadow);
-            padding: 3rem;
+            border: none;
+            box-shadow: none;
+            padding: 0;
             position: relative;
+            height: 100%;
+        }
             overflow: auto;
             max-height: calc(100vh - 300px);
         }
@@ -1361,22 +1395,11 @@
         }
 
         .tile-remove {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 20px;
-            height: 20px;
-            background: var(--sepia);
-            color: var(--parchment);
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 0.7rem;
-            display: none;
+            display: none !important; /* Removed - using delete zone instead */
         }
 
         .person-tile:hover .tile-remove {
-            display: block;
+            display: none !important;
         }
 
         /* Marriage Node Styles */
@@ -2188,15 +2211,19 @@
         }
     </script>
     
-    <header>
-        <h1>Woodward Family Tree</h1>
-        <nav>
-            <button class="nav-btn active" data-view="tree">Tree</button>
-            <button class="nav-btn" data-view="vault">Archive</button>
-            <button class="nav-btn" data-view="data">Data</button>
-        </nav>
-        <button class="settings-btn" id="settingsBtn">⚙️ Settings</button>
-    </header>
+    <!-- Top-Right Button Bar -->
+    <div class="top-right-buttons">
+        <button class="top-btn" id="editBtn">Edit</button>
+        <button class="top-btn" data-view="data">Data</button>
+        <button class="top-btn" data-view="vault">Archive</button>
+        <button class="top-btn" id="settingsBtn">Settings</button>
+    </div>
+
+    <!-- Delete Zone (shown in edit mode) -->
+    <div class="delete-zone" id="deleteZone">
+        🗑️
+        <div class="delete-label">Drop to Delete</div>
+    </div>
 
     <div class="container">
         <!-- Archival Vault View -->
@@ -2669,9 +2696,34 @@
         }
 
         // Navigation
-        const navBtns = document.querySelectorAll('.nav-btn');
+        const navBtns = document.querySelectorAll('.nav-btn, .top-btn[data-view]');
         const views = document.querySelectorAll('.view');
 
+        // Set up top button handlers
+        const topButtons = document.querySelectorAll('.top-btn[data-view]');
+        topButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetView = btn.dataset.view;
+                
+                topButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                views.forEach(v => v.classList.remove('active'));
+                document.getElementById(targetView).classList.add('active');
+
+                // Initialize grid when switching to tree view
+                if (targetView === 'tree' && !gridInitialized) {
+                    initializeGrid();
+                }
+                
+                // Populate data table when switching to data view
+                if (targetView === 'data') {
+                    populateDataTable();
+                }
+            });
+        });
+
+        // Legacy nav buttons (if any still exist)
         navBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const targetView = btn.dataset.view;
@@ -2693,6 +2745,92 @@
                 }
             });
         });
+        
+        // Edit button handler
+        const editBtn = document.getElementById('editBtn');
+        const deleteZone = document.getElementById('deleteZone');
+        
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                // Make sure we're on tree view
+                views.forEach(v => v.classList.remove('active'));
+                document.getElementById('tree').classList.add('active');
+                topButtons.forEach(b => b.classList.remove('active'));
+                
+                if (!gridInitialized) {
+                    initializeGrid();
+                }
+                
+                // Toggle edit mode
+                editMode = !editMode;
+                editBtn.classList.toggle('active');
+                
+                if (editMode) {
+                    // Show delete zone
+                    if (deleteZone) deleteZone.style.display = 'flex';
+                    
+                    // Enable editing
+                    document.querySelectorAll('.person-tile').forEach(tile => {
+                        tile.style.cursor = 'grab';
+                    });
+                } else {
+                    // Hide delete zone
+                    if (deleteZone) deleteZone.style.display = 'none';
+                    
+                    // Disable editing
+                    drawLinesMode = false;
+                    document.querySelectorAll('.person-tile').forEach(tile => {
+                        tile.style.cursor = 'pointer';
+                        tile.classList.remove('selected');
+                    });
+                    selectedPersons = [];
+                    selectedForLine = [];
+                }
+            });
+        }
+        
+        // Delete zone drag and drop functionality
+        if (deleteZone) {
+            deleteZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                deleteZone.classList.add('drag-over');
+            });
+            
+            deleteZone.addEventListener('dragleave', () => {
+                deleteZone.classList.remove('drag-over');
+            });
+            
+            deleteZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                deleteZone.classList.remove('drag-over');
+                
+                const personId = e.dataTransfer.getData('personId');
+                const marriageId = e.dataTransfer.getData('marriageId');
+                
+                if (personId) {
+                    // Delete person without confirmation
+                    persons = persons.filter(p => p.id !== personId);
+                    connections = connections.filter(c => c.from !== personId && c.to !== personId);
+                    
+                    const tile = document.querySelector(`[data-id="${personId}"]`);
+                    if (tile) tile.remove();
+                    
+                    redrawConnections();
+                    populateDataTable();
+                    saveToLocalStorage();
+                } else if (marriageId) {
+                    // Delete marriage node without confirmation
+                    marriageNodes = marriageNodes.filter(m => m.id !== marriageId);
+                    connections = connections.filter(c => c.from !== marriageId && c.to !== marriageId);
+                    
+                    const node = document.querySelector(`[data-id="${marriageId}"]`);
+                    if (node) node.remove();
+                    
+                    redrawConnections();
+                    saveToLocalStorage();
+                }
+            });
+        }
 
         // Tree Builder Variables
         let gridInitialized = false;
@@ -3241,9 +3379,22 @@
                     
                     // Update tile position
                     const tile = document.querySelector(`[data-id="${person.id}"]`);
-                    if (tile) {
+                    if (tile && tile.classList.contains('person-tile')) {
                         tile.style.left = `${person.x - 70}px`;
                         tile.style.top = `${person.y - 45}px`;
+                    }
+                });
+                
+                // Shift all marriage node positions
+                marriageNodes.forEach(node => {
+                    node.x += shiftX;
+                    node.y += shiftY;
+                    
+                    // Update marriage node position
+                    const nodeEl = document.querySelector(`[data-id="${node.id}"]`);
+                    if (nodeEl && nodeEl.classList.contains('marriage-node')) {
+                        nodeEl.style.left = `${node.x - 15}px`;
+                        nodeEl.style.top = `${node.y - 15}px`;
                     }
                 });
             }
@@ -3609,15 +3760,22 @@
             console.log('Tile created with position:', tile.style.left, tile.style.top); // Debug
             
             tile.innerHTML = `
-                <button class="tile-remove" onclick="removePerson('${person.id}')">×</button>
                 <div class="tile-name">${person.name}</div>
                 <div class="tile-dates">${person.dates}</div>
             `;
             
+            // Make draggable in edit mode for delete zone
+            tile.draggable = true;
+            tile.addEventListener('dragstart', (e) => {
+                if (editMode) {
+                    e.dataTransfer.setData('personId', person.id);
+                } else {
+                    e.preventDefault();
+                }
+            });
+            
             // Click handler for view mode and drawing lines
             tile.addEventListener('click', (e) => {
-                if (e.target.classList.contains('tile-remove')) return;
-                
                 if (!editMode) {
                     // View mode - open dossier
                     openDossier(person.id);
@@ -3652,7 +3810,6 @@
             
             // Double-click to edit
             tile.addEventListener('dblclick', (e) => {
-                if (e.target.classList.contains('tile-remove')) return;
                 
                 const newName = prompt('Edit name:', person.name);
                 if (newName !== null && newName !== '') {
@@ -3672,7 +3829,6 @@
             let offsetX, offsetY;
             
             tile.addEventListener('mousedown', (e) => {
-                if (e.target.classList.contains('tile-remove')) return;
                 if (!editMode) return; // Only drag in edit mode
                 if (drawLinesMode) return; // Don't drag in draw lines mode
                 
@@ -3884,6 +4040,16 @@
             nodeEl.style.top = `${node.y - 15}px`;
             nodeEl.innerHTML = '💍';
             nodeEl.style.cursor = editMode ? 'grab' : 'pointer';
+            
+            // Make draggable for delete zone
+            nodeEl.draggable = true;
+            nodeEl.addEventListener('dragstart', (e) => {
+                if (editMode) {
+                    e.dataTransfer.setData('marriageId', node.id);
+                } else {
+                    e.preventDefault();
+                }
+            });
             
             // Make draggable in edit mode
             let isDragging = false;
