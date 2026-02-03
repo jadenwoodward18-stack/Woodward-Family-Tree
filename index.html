@@ -75,13 +75,56 @@
             font-weight: 600;
         }
 
+        /* Editing Buttons (shown in edit mode) */
+        .editing-buttons {
+            position: fixed;
+            top: 4rem;
+            right: 1rem;
+            display: none;
+            flex-direction: column;
+            gap: 0;
+            z-index: 1000;
+            background: var(--aged-paper);
+            border: 2px solid var(--border-color);
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .editing-buttons button {
+            background: var(--aged-paper);
+            border: none;
+            border-bottom: 2px solid var(--border-color);
+            padding: 0.75rem 1.25rem;
+            font-family: inherit;
+            font-size: 0.85rem;
+            color: var(--ink-faded);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .editing-buttons button:last-child {
+            border-bottom: none;
+        }
+
+        .editing-buttons button:hover {
+            background: var(--parchment);
+            color: var(--sepia);
+        }
+
+        .editing-buttons button.active {
+            background: var(--parchment);
+            color: var(--ink-dark);
+            font-weight: 600;
+        }
+
         /* Delete Zone (shown in edit mode) */
         .delete-zone {
             position: fixed;
-            top: 5rem;
+            top: 15rem;
             right: 1rem;
-            width: 120px;
-            height: 120px;
+            width: 140px;
+            height: 140px;
             background: var(--aged-paper);
             border: 3px dashed #c44;
             border-radius: 8px;
@@ -90,16 +133,17 @@
             justify-content: center;
             font-size: 3rem;
             color: #c44;
-            z-index: 999;
+            z-index: 10000;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             transition: all 0.2s;
+            pointer-events: all;
         }
 
         .delete-zone.drag-over {
             background: #fee;
             border-color: #a00;
             color: #a00;
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
 
         .delete-zone .delete-label {
@@ -2219,6 +2263,13 @@
         <button class="top-btn" id="settingsBtn">Settings</button>
     </div>
 
+    <!-- Editing Buttons (shown in edit mode) -->
+    <div class="editing-buttons" id="editingButtons">
+        <button id="addPersonBtn">+ Person</button>
+        <button id="addMarriageBtn">+ Marriage Node</button>
+        <button id="drawLinesBtn">Draw Lines</button>
+    </div>
+
     <!-- Delete Zone (shown in edit mode) -->
     <div class="delete-zone" id="deleteZone">
         🗑️
@@ -2749,6 +2800,7 @@
         // Edit button handler
         const editBtn = document.getElementById('editBtn');
         const deleteZone = document.getElementById('deleteZone');
+        const editingButtons = document.getElementById('editingButtons');
         
         if (editBtn) {
             editBtn.addEventListener('click', () => {
@@ -2766,7 +2818,8 @@
                 editBtn.classList.toggle('active');
                 
                 if (editMode) {
-                    // Show delete zone
+                    // Show editing buttons and delete zone
+                    if (editingButtons) editingButtons.style.display = 'flex';
                     if (deleteZone) deleteZone.style.display = 'flex';
                     
                     // Enable editing
@@ -2774,7 +2827,8 @@
                         tile.style.cursor = 'grab';
                     });
                 } else {
-                    // Hide delete zone
+                    // Hide editing buttons and delete zone
+                    if (editingButtons) editingButtons.style.display = 'none';
                     if (deleteZone) deleteZone.style.display = 'none';
                     
                     // Disable editing
@@ -3866,6 +3920,21 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 
+                // Check if mouse is over delete zone for visual feedback
+                const deleteZone = document.getElementById('deleteZone');
+                if (deleteZone) {
+                    const dzRect = deleteZone.getBoundingClientRect();
+                    const mouseX = e.clientX;
+                    const mouseY = e.clientY;
+                    
+                    if (mouseX >= dzRect.left && mouseX <= dzRect.right &&
+                        mouseY >= dzRect.top && mouseY <= dzRect.bottom) {
+                        deleteZone.classList.add('drag-over');
+                    } else {
+                        deleteZone.classList.remove('drag-over');
+                    }
+                }
+                
                 const canvas = document.getElementById('gridCanvas');
                 const canvasRect = canvas.getBoundingClientRect();
                 
@@ -3927,11 +3996,33 @@
                 redrawConnections();
             });
             
-            document.addEventListener('mouseup', () => {
+            document.addEventListener('mouseup', (e) => {
                 if (isDragging) {
                     isDragging = false;
                     tile.classList.remove('dragging');
-                    // Trim canvas after drag completes
+                    
+                    // Check if mouse is over delete zone
+                    const deleteZone = document.getElementById('deleteZone');
+                    if (deleteZone) {
+                        const dzRect = deleteZone.getBoundingClientRect();
+                        const mouseX = e.clientX;
+                        const mouseY = e.clientY;
+                        
+                        if (mouseX >= dzRect.left && mouseX <= dzRect.right &&
+                            mouseY >= dzRect.top && mouseY <= dzRect.bottom) {
+                            // Delete person without confirmation
+                            persons = persons.filter(p => p.id !== person.id);
+                            connections = connections.filter(c => c.from !== person.id && c.to !== person.id);
+                            tile.remove();
+                            redrawConnections();
+                            populateDataTable();
+                            saveToLocalStorage();
+                            deleteZone.classList.remove('drag-over');
+                            return;
+                        }
+                    }
+                    
+                    // Normal drag end - trim canvas and save
                     setTimeout(() => trimCanvasToFit(), 100);
                     saveToLocalStorage();
                 }
@@ -4091,6 +4182,21 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 
+                // Check if mouse is over delete zone for visual feedback
+                const deleteZone = document.getElementById('deleteZone');
+                if (deleteZone) {
+                    const dzRect = deleteZone.getBoundingClientRect();
+                    const mouseX = e.clientX;
+                    const mouseY = e.clientY;
+                    
+                    if (mouseX >= dzRect.left && mouseX <= dzRect.right &&
+                        mouseY >= dzRect.top && mouseY <= dzRect.bottom) {
+                        deleteZone.classList.add('drag-over');
+                    } else {
+                        deleteZone.classList.remove('drag-over');
+                    }
+                }
+                
                 const canvas = document.getElementById('gridCanvas');
                 const canvasRect = canvas.getBoundingClientRect();
                 
@@ -4142,10 +4248,31 @@
                 redrawConnections();
             });
             
-            document.addEventListener('mouseup', () => {
+            document.addEventListener('mouseup', (e) => {
                 if (isDragging) {
                     isDragging = false;
                     nodeEl.classList.remove('dragging');
+                    
+                    // Check if mouse is over delete zone
+                    const deleteZone = document.getElementById('deleteZone');
+                    if (deleteZone) {
+                        const dzRect = deleteZone.getBoundingClientRect();
+                        const mouseX = e.clientX;
+                        const mouseY = e.clientY;
+                        
+                        if (mouseX >= dzRect.left && mouseX <= dzRect.right &&
+                            mouseY >= dzRect.top && mouseY <= dzRect.bottom) {
+                            // Delete marriage node without confirmation
+                            marriageNodes = marriageNodes.filter(m => m.id !== node.id);
+                            connections = connections.filter(c => c.from !== node.id && c.to !== node.id);
+                            nodeEl.remove();
+                            redrawConnections();
+                            saveToLocalStorage();
+                            deleteZone.classList.remove('drag-over');
+                            return;
+                        }
+                    }
+                    
                     saveToLocalStorage();
                 }
             });
