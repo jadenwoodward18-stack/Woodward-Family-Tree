@@ -1208,15 +1208,6 @@
             touch-action: pan-x pan-y pinch-zoom; /* Enable pinch zoom on mobile */
         }
         
-        /* Selection Box */
-        .selection-box {
-            position: absolute;
-            border: 2px dashed var(--sepia);
-            background: rgba(112, 66, 20, 0.1);
-            pointer-events: none;
-            z-index: 1000;
-        }
-        
         /* Mobile Controls */
         .mobile-controls {
             display: none;
@@ -1340,10 +1331,10 @@
         }
 
         .person-tile.selected {
-            border-color: var(--sepia);
-            background: #f8f5eb;
-            box-shadow: 0 4px 16px rgba(112, 66, 20, 0.3);
-            border-width: 3px;
+            border-color: var(--sepia) !important;
+            background: #ffffff !important;
+            box-shadow: 0 4px 16px rgba(112, 66, 20, 0.5) !important;
+            border-width: 3px !important;
         }
 
         .person-tile.dragging {
@@ -1418,9 +1409,10 @@
         }
 
         .marriage-node.selected {
-            border-color: var(--ink-dark);
-            border-width: 3px;
-            box-shadow: 0 4px 16px rgba(112, 66, 20, 0.5);
+            border-color: var(--ink-dark) !important;
+            border-width: 4px !important;
+            box-shadow: 0 4px 16px rgba(112, 66, 20, 0.8) !important;
+            background: rgba(255, 255, 255, 0.3) !important;
         }
 
         .marriage-node.dragging {
@@ -2115,8 +2107,87 @@
         }
     </style>
 
+
 </head>
 <body>
+    <script>
+        // Load Firebase scripts dynamically
+        let database;
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = false; // Load in order
+                script.onload = () => {
+                    console.log('✅ Loaded:', src);
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.error('❌ Failed to load:', src);
+                    reject(new Error(`Failed to load ${src}`));
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        async function initializeFirebase() {
+            try {
+                console.log('📦 Loading Firebase scripts...');
+                
+                // Load Firebase app first
+                await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+                
+                // Then load database
+                await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js');
+                
+                console.log('🔧 Initializing Firebase...');
+                
+                // Check if firebase is available
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase object not available after loading scripts');
+                }
+                
+                const firebaseConfig = {
+                    apiKey: "AIzaSyCA9GEBX37FmrF0new2E4GbYhYF3QAeB_o",
+                    authDomain: "woodward-family-tree.firebaseapp.com",
+                    databaseURL: "https://woodward-family-tree-default-rtdb.firebaseio.com",
+                    projectId: "woodward-family-tree",
+                    storageBucket: "woodward-family-tree.firebasestorage.app",
+                    messagingSenderId: "986340301959",
+                    appId: "1:986340301959:web:b049280c4a8766d0c5ec22",
+                    measurementId: "G-32561705H8"
+                };
+                
+                // Initialize Firebase
+                if (firebase.apps.length === 0) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                database = firebase.database();
+                
+                console.log('✅ Firebase initialized successfully!');
+                console.log('📊 Database ready:', !!database);
+                
+                // Trigger load from Firebase
+                if (typeof loadFromFirebase === 'function') {
+                    loadFromFirebase();
+                }
+                
+            } catch (error) {
+                console.error('❌ Firebase initialization failed:', error);
+                console.error('📝 Full error:', error.message);
+                console.error('🔄 Falling back to localStorage');
+            }
+        }
+        
+        // Start initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeFirebase);
+        } else {
+            initializeFirebase();
+        }
+    </script>
+    
     <header>
         <h1>Woodward Family Tree</h1>
         <nav>
@@ -3234,7 +3305,7 @@
                         editingControls.style.display = 'flex';
                         editingControls.style.gap = '1rem';
                         gridDots.style.display = 'block';
-                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
+                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple';
                         
                         // Enable tile dragging
                         document.querySelectorAll('.person-tile').forEach(tile => {
@@ -3351,7 +3422,7 @@
                     if (drawLinesMode) {
                         modeIndicator.textContent = 'Draw Lines Mode';
                     } else {
-                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
+                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple';
                     }
                 };
                 
@@ -3434,7 +3505,7 @@
                     if (drawLinesMode) {
                         modeIndicator.textContent = 'Draw Lines Mode';
                     } else {
-                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
+                        modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple';
                     }
                 };
                 
@@ -3467,169 +3538,12 @@
                     modeIndicator.textContent = 'Draw Lines Mode: Click two tiles to connect them • Click any line to delete it • Click "Draw Lines" again to exit';
                     gridCanvas.style.cursor = 'crosshair';
                 } else {
-                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select • Double-click to edit details';
+                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Double-click to edit details';
                     gridCanvas.style.cursor = 'default';
                 }
             });
         }
 
-        // Ctrl+Drag Box Selection
-        (function setupBoxSelection() {
-            const gridCanvas = document.getElementById('gridCanvas');
-            const personTiles = document.getElementById('personTiles');
-            let isBoxSelecting = false;
-            let selectionBox = null;
-            let startX, startY;
-            
-            gridCanvas.addEventListener('mousedown', (e) => {
-                // Only start box selection on ctrl+click in edit mode
-                if (!e.ctrlKey || !editMode || drawLinesMode) return;
-                
-                // Don't start if clicking on a tile or marriage node
-                if (e.target.closest('.person-tile') || e.target.closest('.marriage-node')) return;
-                
-                isBoxSelecting = true;
-                
-                // Get canvas-relative coordinates
-                const rect = gridCanvas.getBoundingClientRect();
-                startX = e.clientX - rect.left + gridCanvas.scrollLeft;
-                startY = e.clientY - rect.top + gridCanvas.scrollTop;
-                
-                // Create selection box
-                selectionBox = document.createElement('div');
-                selectionBox.className = 'selection-box';
-                selectionBox.style.left = startX + 'px';
-                selectionBox.style.top = startY + 'px';
-                selectionBox.style.width = '0px';
-                selectionBox.style.height = '0px';
-                personTiles.appendChild(selectionBox);
-                
-                e.preventDefault();
-            });
-            
-            document.addEventListener('mousemove', (e) => {
-                if (!isBoxSelecting || !selectionBox) return;
-                
-                const rect = gridCanvas.getBoundingClientRect();
-                const currentX = e.clientX - rect.left + gridCanvas.scrollLeft;
-                const currentY = e.clientY - rect.top + gridCanvas.scrollTop;
-                
-                // Calculate box dimensions
-                const left = Math.min(startX, currentX);
-                const top = Math.min(startY, currentY);
-                const width = Math.abs(currentX - startX);
-                const height = Math.abs(currentY - startY);
-                
-                selectionBox.style.left = left + 'px';
-                selectionBox.style.top = top + 'px';
-                selectionBox.style.width = width + 'px';
-                selectionBox.style.height = height + 'px';
-            });
-            
-            document.addEventListener('mouseup', (e) => {
-                if (!isBoxSelecting || !selectionBox) return;
-                
-                const canvasRect = gridCanvas.getBoundingClientRect();
-                const currentX = e.clientX - canvasRect.left + gridCanvas.scrollLeft;
-                const currentY = e.clientY - canvasRect.top + gridCanvas.scrollTop;
-                
-                // Calculate final box dimensions (in canvas coordinates)
-                const boxLeft = Math.min(startX, currentX);
-                const boxTop = Math.min(startY, currentY);
-                const boxRight = Math.max(startX, currentX);
-                const boxBottom = Math.max(startY, currentY);
-                
-                console.log('Selection box:', boxLeft, boxTop, boxRight, boxBottom);
-                
-                // Clear previous selections
-                document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
-                    el.classList.remove('selected');
-                });
-                
-                // Find all tiles and marriage nodes within the selection box
-                const tiles = document.querySelectorAll('.person-tile');
-                const nodes = document.querySelectorAll('.marriage-node');
-                const newSelectedPersons = [];
-                
-                tiles.forEach(tile => {
-                    // Get tile's actual position in canvas coordinates
-                    const tileRect = tile.getBoundingClientRect();
-                    const tileLeft = tileRect.left - canvasRect.left + gridCanvas.scrollLeft;
-                    const tileTop = tileRect.top - canvasRect.top + gridCanvas.scrollTop;
-                    const tileRight = tileLeft + tile.offsetWidth;
-                    const tileBottom = tileTop + tile.offsetHeight;
-                    
-                    console.log('Tile:', tile.dataset.id, tileLeft, tileTop, tileRight, tileBottom);
-                    
-                    // Check if tile intersects with selection box
-                    if (tileRight >= boxLeft && tileLeft <= boxRight &&
-                        tileBottom >= boxTop && tileTop <= boxBottom) {
-                        const personId = tile.dataset.id;
-                        newSelectedPersons.push(personId);
-                        tile.classList.add('selected');
-                        console.log('Selected tile:', personId);
-                    }
-                });
-                
-                // Also check marriage nodes
-                nodes.forEach(node => {
-                    const nodeRect = node.getBoundingClientRect();
-                    const nodeLeft = nodeRect.left - canvasRect.left + gridCanvas.scrollLeft;
-                    const nodeTop = nodeRect.top - canvasRect.top + gridCanvas.scrollTop;
-                    const nodeRight = nodeLeft + node.offsetWidth;
-                    const nodeBottom = nodeTop + node.offsetHeight;
-                    
-                    // Check if node intersects with selection box
-                    if (nodeRight >= boxLeft && nodeLeft <= boxRight &&
-                        nodeBottom >= boxTop && nodeTop <= boxBottom) {
-                        const nodeId = node.dataset.id;
-                        newSelectedPersons.push(nodeId);
-                        node.classList.add('selected');
-                        console.log('Selected node:', nodeId);
-                    }
-                });
-                
-                selectedPersons = newSelectedPersons;
-                console.log('Total selected:', selectedPersons.length);
-                
-                // Remove selection box
-                selectionBox.remove();
-                selectionBox = null;
-                isBoxSelecting = false;
-                
-                if (selectedPersons.length > 0) {
-                    modeIndicator.textContent = `Selected ${selectedPersons.length} item(s) • Drag to move group • Click elsewhere to deselect`;
-                } else {
-                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
-                }
-            });
-            
-            // Click on empty space to deselect all
-            gridCanvas.addEventListener('click', (e) => {
-                if (!editMode || drawLinesMode) return;
-                
-                // Only deselect if clicking on canvas itself (not a tile or marriage node)
-                if (!e.target.closest('.person-tile') && !e.target.closest('.marriage-node') && e.target === gridCanvas) {
-                    // Clear all selections
-                    document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
-                        el.classList.remove('selected');
-                    });
-                    selectedPersons = [];
-                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
-                }
-            });
-            
-            // Escape key to clear selection
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && editMode && !drawLinesMode) {
-                    document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
-                        el.classList.remove('selected');
-                    });
-                    selectedPersons = [];
-                    modeIndicator.textContent = 'Edit Mode: Drag tiles to move • Ctrl+Click to select multiple • Ctrl+Drag for box select';
-                }
-            });
-        })();
 
         // Add Person
         function addPerson(name, dates, x, y, deceased = false, inVitro = false, extraData = {}) {
@@ -3774,8 +3688,8 @@
                 } else {
                     // If clicking on a tile that's not in the selection, clear selection first
                     if (!selectedPersons.includes(person.id)) {
-                        document.querySelectorAll('.person-tile.selected').forEach(t => {
-                            t.classList.remove('selected');
+                        document.querySelectorAll('.person-tile.selected, .marriage-node.selected').forEach(el => {
+                            el.classList.remove('selected');
                         });
                         selectedPersons = [];
                     }
@@ -4406,9 +4320,12 @@
                         trimCanvasToFit();
                         redrawConnections(); // Redraw again after canvas adjustment
                         console.log('Tree restoration complete!');
+                        
+                        // Save uploaded configuration to Firebase so all users see it
+                        saveToLocalStorage();
                     }, 100);
                     
-                    alert('Configuration loaded successfully!');
+                    alert('Configuration loaded successfully and synced to all users!');
                     closeSettings();
                 } catch (error) {
                     console.error('Upload error:', error);
@@ -4453,14 +4370,41 @@
             };
         }
         
+        let lastSaveTimestamp = 0;
+        let isLoadingFromFirebase = false;
+        
         function saveToLocalStorage() {
             if (isOffline) return;
             
+            // Check if Firebase is available
+            if (!database) {
+                console.warn('Firebase not initialized, using localStorage');
+                try {
+                    const config = getCurrentConfiguration();
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+                    localStorage.setItem(LAST_SAVED_KEY, new Date().toISOString());
+                } catch (e) {
+                    console.error('Failed to save to localStorage:', e);
+                }
+                return;
+            }
+            
             try {
                 const config = getCurrentConfiguration();
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-                localStorage.setItem(LAST_SAVED_KEY, new Date().toISOString());
-                console.log('Auto-saved to localStorage');
+                lastSaveTimestamp = Date.now();
+                
+                // Save to Firebase Realtime Database
+                database.ref('familyTree').set(config)
+                    .then(() => {
+                        console.log('Auto-saved to Firebase');
+                    })
+                    .catch((error) => {
+                        console.error('Firebase save error:', error);
+                        // Fallback to localStorage if Firebase fails
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+                        localStorage.setItem(LAST_SAVED_KEY, new Date().toISOString());
+                        console.log('Saved to localStorage (fallback)');
+                    });
             } catch (e) {
                 console.error('Failed to save:', e);
             }
@@ -4988,7 +4932,114 @@
                     e.target.value = ''; // Reset input
                 });
             }
+            
+            // Load data from Firebase on page load
+            loadFromFirebase();
         });
+
+        // Load configuration from Firebase
+        function loadFromFirebase() {
+            if (isOffline) {
+                console.log('Offline mode - not loading from Firebase');
+                return;
+            }
+            
+            // Check if Firebase is available
+            if (!database) {
+                console.warn('Firebase not initialized, skipping load');
+                return;
+            }
+            
+            // Set up real-time listener for Firebase data
+            database.ref('familyTree').on('value', (snapshot) => {
+                const config = snapshot.val();
+                
+                // Skip if we just saved (debounce)
+                const timeSinceLastSave = Date.now() - lastSaveTimestamp;
+                if (timeSinceLastSave < 1000) {
+                    console.log('Skipping Firebase update - just saved');
+                    return;
+                }
+                
+                // Skip if already loading
+                if (isLoadingFromFirebase) {
+                    console.log('Skipping Firebase update - already loading');
+                    return;
+                }
+                
+                if (config) {
+                    isLoadingFromFirebase = true;
+                    console.log('Loaded configuration from Firebase');
+                    
+                    // Clear existing data
+                    persons.length = 0;
+                    connections.length = 0;
+                    marriageNodes.length = 0;
+                    
+                    // Clear DOM
+                    const personTiles = document.getElementById('personTiles');
+                    const connectionsSvg = document.getElementById('connectionsSvg');
+                    if (personTiles) personTiles.innerHTML = '';
+                    if (connectionsSvg) connectionsSvg.innerHTML = '';
+                    
+                    // Load persons
+                    nextPersonId = config.nextPersonId || 1;
+                    nextMarriageId = config.nextMarriageId || 1;
+                    
+                    if (config.persons && Array.isArray(config.persons)) {
+                        config.persons.forEach(p => {
+                            const person = {
+                                id: p.id,
+                                name: p.name || '',
+                                dates: p.dates || '',
+                                birthDate: p.birthDate || '',
+                                birthPlace: p.birthPlace || '',
+                                deathDate: p.deathDate || '',
+                                parents: p.parents || '',
+                                spouse: p.spouse || '',
+                                notes: p.notes || '',
+                                x: p.x || 0,
+                                y: p.y || 0,
+                                deceased: p.deceased || false,
+                                inVitro: p.inVitro || false
+                            };
+                            persons.push(person);
+                            renderPerson(person);
+                        });
+                    }
+                    
+                    // Load marriage nodes
+                    if (config.marriageNodes && Array.isArray(config.marriageNodes)) {
+                        config.marriageNodes.forEach(m => {
+                            marriageNodes.push(m);
+                            renderMarriageNode(m);
+                        });
+                    }
+                    
+                    // Load connections
+                    if (config.connections && Array.isArray(config.connections)) {
+                        config.connections.forEach(conn => {
+                            connections.push(conn);
+                        });
+                    }
+                    
+                    // Redraw connections
+                    redrawConnections();
+                    
+                    // Update data table
+                    populateDataTable();
+                    
+                    isLoadingFromFirebase = false;
+                } else {
+                    console.log('No data in Firebase - using initial family data');
+                    // If no data exists, the initial family data will be used (already loaded)
+                    isLoadingFromFirebase = false;
+                }
+            }, (error) => {
+                console.error('Firebase load error:', error);
+                isLoadingFromFirebase = false;
+            });
+        }
 
         // Archive rendering and management functions
         function renderArchive() {
