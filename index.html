@@ -5,53 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Woodward Family Tree</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-        <!-- 2. Initialize Firebase in your script -->
-    <script>
-        // YOUR FIREBASE CONFIG OBJECT GOES HERE!
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-        const firebaseConfig = {
-          apiKey: "AIzaSyCA9GEBX37FmrF0new2E4GbYhYF3QAeB_o",
-          authDomain: "woodward-family-tree.firebaseapp.com",
-          databaseURL: "https://woodward-family-tree-default-rtdb.firebaseio.com",
-          projectId: "woodward-family-tree",
-          storageBucket: "woodward-family-tree.firebasestorage.app",
-          messagingSenderId: "986340301959",
-          appId: "1:986340301959:web:b049280c4a8766d0c5ec22",
-          measurementId: "G-32561705H8"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-
-        // Get a reference to the Firestore service
-        const db = firebase.firestore();
-
-        // Let's add some data to Firestore!
-        // Think of 'users' as a folder (collection) and 'alovelace' as a file (document)
-        db.collection("users").doc("alovelace").set({
-            first: "Ada",
-            last: "Lovelace",
-            born: 1815
-        })
-        .then(() => {
-            console.log("Document successfully written!");
-        })
-        .catch((error) => {
-            console.error("Error writing document: ", error);
-        });
-
-        // You can also add a new document with an automatically generated ID:
-        db.collection("messages").add({
-            text: "Hello from my website!",
-            timestamp: new Date()
-        })
-        .then((docRef) => {
-            console.log("Message written with ID: ", docRef.id);
-        })
-        .catch((error) => {
-            console.error("Error adding message: ", error);
-        });
-    </script>
     <style>
         * {
             margin: 0;
