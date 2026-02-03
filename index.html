@@ -31,33 +31,32 @@
         }
 
         /* Header */
-        /* Compact Top-Right Button Bar */
+        /* Compact Top-Right Button Bar - ~5% screen height */
         .top-right-buttons {
             position: fixed;
-            top: 1rem;
-            right: 1rem;
+            top: 0.5rem;
+            right: 0.5rem;
             display: flex;
             gap: 0;
             z-index: 1000;
             background: var(--aged-paper);
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
             border-radius: 0;
-            box-shadow: 0 2px 8px var(--shadow);
+            box-shadow: 0 2px 6px var(--shadow);
         }
 
         .top-right-buttons button {
             background: var(--aged-paper);
             border: none;
-            border-right: 2px solid var(--border-color);
-            padding: 0.75rem 1.25rem;
+            border-right: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
             font-family: inherit;
-            font-size: 0.9rem;
+            font-size: 0.75rem;
             color: var(--ink-faded);
             cursor: pointer;
             transition: all 0.2s;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            font-size: 0.85rem;
         }
 
         .top-right-buttons button:last-child {
@@ -78,24 +77,24 @@
         /* Editing Buttons (shown in edit mode) */
         .editing-buttons {
             position: fixed;
-            top: 4rem;
-            right: 1rem;
+            top: 2.5rem;
+            right: 0.5rem;
             display: none;
             flex-direction: column;
             gap: 0;
             z-index: 1000;
             background: var(--aged-paper);
-            border: 2px solid var(--border-color);
-            box-shadow: 0 2px 8px var(--shadow);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px var(--shadow);
         }
 
         .editing-buttons button {
             background: var(--aged-paper);
             border: none;
-            border-bottom: 2px solid var(--border-color);
-            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
             font-family: inherit;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--ink-faded);
             cursor: pointer;
             transition: all 0.2s;
@@ -121,17 +120,17 @@
         /* Delete Zone (shown in edit mode) */
         .delete-zone {
             position: fixed;
-            top: 15rem;
-            right: 1rem;
-            width: 140px;
-            height: 140px;
+            top: 8rem;
+            right: 0.5rem;
+            width: 100px;
+            height: 100px;
             background: var(--aged-paper);
             border: 3px dashed #c44;
-            border-radius: 8px;
+            border-radius: 6px;
             display: none;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
+            font-size: 2.5rem;
             color: #c44;
             z-index: 10000;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -148,10 +147,10 @@
 
         .delete-zone .delete-label {
             position: absolute;
-            bottom: 0.5rem;
-            font-size: 0.7rem;
+            bottom: 0.3rem;
+            font-size: 0.55rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
             font-weight: 600;
         }
 
@@ -3287,9 +3286,65 @@
 
             // Fit canvas to tiles after loading
             fitCanvasToTiles();
+            
+            // Zoom to fit all elements on screen
+            setTimeout(() => zoomToFit(), 100);
 
             gridInitialized = true;
             setupTreeBuilderEvents();
+        }
+        
+        // Zoom canvas to fit all elements on screen
+        function zoomToFit() {
+            const gridCanvas = document.getElementById('gridCanvas');
+            if (!gridCanvas || persons.length === 0) return;
+            
+            // Find bounds of all elements
+            let minX = Infinity, minY = Infinity;
+            let maxX = -Infinity, maxY = -Infinity;
+            
+            persons.forEach(person => {
+                minX = Math.min(minX, person.x - 70);  // Account for tile width
+                minY = Math.min(minY, person.y - 45);  // Account for tile height
+                maxX = Math.max(maxX, person.x + 70);
+                maxY = Math.max(maxY, person.y + 45);
+            });
+            
+            marriageNodes.forEach(node => {
+                minX = Math.min(minX, node.x - 15);
+                minY = Math.min(minY, node.y - 15);
+                maxX = Math.max(maxX, node.x + 15);
+                maxY = Math.max(maxY, node.y + 15);
+            });
+            
+            // Add padding
+            const padding = 100;
+            minX -= padding;
+            minY -= padding;
+            maxX += padding;
+            maxY += padding;
+            
+            // Calculate content dimensions
+            const contentWidth = maxX - minX;
+            const contentHeight = maxY - minY;
+            
+            // Get viewport dimensions (subtract button height ~5%)
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight * 0.95;  // 95% for content, 5% for buttons
+            
+            // Calculate scale to fit
+            const scaleX = viewportWidth / contentWidth;
+            const scaleY = viewportHeight / contentHeight;
+            const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, max 1
+            
+            // Apply scale and scroll to show content
+            if (scale < 1) {
+                gridCanvas.style.zoom = scale;
+            }
+            
+            // Scroll to show the content centered
+            gridCanvas.scrollLeft = minX * (scale || 1);
+            gridCanvas.scrollTop = minY * (scale || 1);
         }
 
         // Regenerate all grid dots based on current canvas size
@@ -4172,10 +4227,15 @@
                         selectedPersons = [];
                     }
                     
-                    // Start dragging
-                    e.preventDefault();
+                    // Start dragging - calculate offset properly like person tiles
                     isDragging = true;
                     nodeEl.classList.add('dragging');
+                    
+                    const rect = nodeEl.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                    
+                    e.preventDefault();
                 }
             });
             
@@ -4200,19 +4260,27 @@
                 const canvas = document.getElementById('gridCanvas');
                 const canvasRect = canvas.getBoundingClientRect();
                 
-                let canvasX = e.clientX - canvasRect.left + canvas.scrollLeft;
-                let canvasY = e.clientY - canvasRect.top + canvas.scrollTop;
+                let newX = e.clientX - canvasRect.left - offsetX + canvas.scrollLeft + 15; // Add half width (30px/2)
+                let newY = e.clientY - canvasRect.top - offsetY + canvas.scrollTop + 15; // Add half height (30px/2)
                 
-                let snapX = Math.round(canvasX / GRID_SIZE) * GRID_SIZE;
-                let snapY = Math.round(canvasY / GRID_SIZE) * GRID_SIZE;
+                // Snap to grid
+                newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+                newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
                 
-                const deltaX = snapX - node.x;
-                const deltaY = snapY - node.y;
+                const deltaX = newX - node.x;
+                const deltaY = newY - node.y;
                 
-                node.x = snapX;
-                node.y = snapY;
-                nodeEl.style.left = `${snapX - 15}px`;
-                nodeEl.style.top = `${snapY - 15}px`;
+                // Check if canvas needs to expand (before updating position)
+                const shift = checkAndExpandCanvas(newX, newY);
+                
+                // If canvas shifted, adjust the new position
+                newX += shift.shiftX;
+                newY += shift.shiftY;
+                
+                node.x = newX;
+                node.y = newY;
+                nodeEl.style.left = `${newX - 15}px`;
+                nodeEl.style.top = `${newY - 15}px`;
                 
                 // Move selected items together
                 if (selectedPersons.includes(node.id) && selectedPersons.length > 1) {
