@@ -2838,9 +2838,19 @@
                     });
                     selectedPersons = [];
                     selectedForLine = [];
+                    
+                    // Zoom to fit when exiting edit mode
+                    setTimeout(() => zoomToFit(), 100);
                 }
             });
         }
+        
+        // Window resize listener - re-zoom to fit
+        window.addEventListener('resize', () => {
+            if (gridInitialized && !editMode) {
+                setTimeout(() => zoomToFit(), 100);
+            }
+        });
         
         // Delete zone drag and drop functionality
         if (deleteZone) {
@@ -3205,19 +3215,24 @@
 
         // Fit canvas to all tiles
         function fitCanvasToTiles() {
-            if (persons.length === 0) return;
+            if (persons.length === 0 && marriageNodes.length === 0) return;
             
-            // Find the maximum x and y coordinates
+            // Find the maximum x and y coordinates for persons and marriage nodes
             let maxX = 0;
             let maxY = 0;
             
             persons.forEach(person => {
-                if (person.x > maxX) maxX = person.x;
-                if (person.y > maxY) maxY = person.y;
+                if (person.x + 70 > maxX) maxX = person.x + 70;  // Account for tile width
+                if (person.y + 45 > maxY) maxY = person.y + 45;  // Account for tile height
+            });
+            
+            marriageNodes.forEach(node => {
+                if (node.x + 15 > maxX) maxX = node.x + 15;  // Account for node width
+                if (node.y + 15 > maxY) maxY = node.y + 15;  // Account for node height
             });
             
             // Add padding
-            const padding = 300;
+            const padding = 100;
             const requiredWidth = maxX + padding;
             const requiredHeight = maxY + padding;
             
@@ -3267,6 +3282,9 @@
             
             // Create grid dots
             regenerateGridDots();
+            
+            // Hide grid dots initially (we start in view mode)
+            gridDots.style.display = 'none';
 
             // Load initial family members scattered across canvas
             initialFamily.forEach((member, index) => {
@@ -3297,36 +3315,15 @@
         // Zoom canvas to fit all elements on screen
         function zoomToFit() {
             const gridCanvas = document.getElementById('gridCanvas');
-            if (!gridCanvas || persons.length === 0) return;
+            if (!gridCanvas) return;
+            if (persons.length === 0 && marriageNodes.length === 0) return;
             
-            // Find bounds of all elements
-            let minX = Infinity, minY = Infinity;
-            let maxX = -Infinity, maxY = -Infinity;
+            // First, trim canvas to exact content size
+            trimCanvasToFit();
             
-            persons.forEach(person => {
-                minX = Math.min(minX, person.x - 70);  // Account for tile width
-                minY = Math.min(minY, person.y - 45);  // Account for tile height
-                maxX = Math.max(maxX, person.x + 70);
-                maxY = Math.max(maxY, person.y + 45);
-            });
-            
-            marriageNodes.forEach(node => {
-                minX = Math.min(minX, node.x - 15);
-                minY = Math.min(minY, node.y - 15);
-                maxX = Math.max(maxX, node.x + 15);
-                maxY = Math.max(maxY, node.y + 15);
-            });
-            
-            // Add padding
-            const padding = 100;
-            minX -= padding;
-            minY -= padding;
-            maxX += padding;
-            maxY += padding;
-            
-            // Calculate content dimensions
-            const contentWidth = maxX - minX;
-            const contentHeight = maxY - minY;
+            // Get canvas dimensions (should now be exact fit)
+            const contentWidth = CANVAS_WIDTH;
+            const contentHeight = CANVAS_HEIGHT;
             
             // Get viewport dimensions (subtract button height ~5%)
             const viewportWidth = window.innerWidth;
@@ -3337,14 +3334,16 @@
             const scaleY = viewportHeight / contentHeight;
             const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, max 1
             
-            // Apply scale and scroll to show content
+            // Apply scale
             if (scale < 1) {
                 gridCanvas.style.zoom = scale;
+            } else {
+                gridCanvas.style.zoom = 1;
             }
             
-            // Scroll to show the content centered
-            gridCanvas.scrollLeft = minX * (scale || 1);
-            gridCanvas.scrollTop = minY * (scale || 1);
+            // Reset scroll to top-left (content should now fit perfectly)
+            gridCanvas.scrollLeft = 0;
+            gridCanvas.scrollTop = 0;
         }
 
         // Regenerate all grid dots based on current canvas size
@@ -3368,34 +3367,62 @@
         // Check if canvas needs to expand based on position
         // Trim canvas to fit all tiles with minimal padding
         function trimCanvasToFit() {
-            if (persons.length === 0) return;
+            if (persons.length === 0 && marriageNodes.length === 0) return;
             
-            // Find min and max coordinates
+            // Find min and max coordinates for both persons and marriage nodes
             let minX = Infinity, minY = Infinity;
             let maxX = -Infinity, maxY = -Infinity;
             
             persons.forEach(person => {
-                if (person.x < minX) minX = person.x;
-                if (person.y < minY) minY = person.y;
-                if (person.x > maxX) maxX = person.x;
-                if (person.y > maxY) maxY = person.y;
+                const tileMinX = person.x - 70;  // tile width/2
+                const tileMinY = person.y - 45;  // tile height/2
+                const tileMaxX = person.x + 70;
+                const tileMaxY = person.y + 45;
+                
+                if (tileMinX < minX) minX = tileMinX;
+                if (tileMinY < minY) minY = tileMinY;
+                if (tileMaxX > maxX) maxX = tileMaxX;
+                if (tileMaxY > maxY) maxY = tileMaxY;
+            });
+            
+            marriageNodes.forEach(node => {
+                const nodeMinX = node.x - 15;  // node width/2
+                const nodeMinY = node.y - 15;  // node height/2
+                const nodeMaxX = node.x + 15;
+                const nodeMaxY = node.y + 15;
+                
+                if (nodeMinX < minX) minX = nodeMinX;
+                if (nodeMinY < minY) minY = nodeMinY;
+                if (nodeMaxX > maxX) maxX = nodeMaxX;
+                if (nodeMaxY > maxY) maxY = nodeMaxY;
             });
             
             // Add minimal padding
-            const padding = 200;
+            const padding = 100;
             const shiftX = Math.max(0, padding - minX);
             const shiftY = Math.max(0, padding - minY);
             
-            // Shift all tiles if needed
+            // Shift all tiles and nodes if needed
             if (shiftX > 0 || shiftY > 0) {
                 persons.forEach(person => {
                     person.x += shiftX;
                     person.y += shiftY;
                     
                     const tile = document.querySelector(`[data-id="${person.id}"]`);
-                    if (tile) {
+                    if (tile && tile.classList.contains('person-tile')) {
                         tile.style.left = `${person.x - 70}px`;
                         tile.style.top = `${person.y - 45}px`;
+                    }
+                });
+                
+                marriageNodes.forEach(node => {
+                    node.x += shiftX;
+                    node.y += shiftY;
+                    
+                    const nodeEl = document.querySelector(`[data-id="${node.id}"]`);
+                    if (nodeEl && nodeEl.classList.contains('marriage-node')) {
+                        nodeEl.style.left = `${node.x - 15}px`;
+                        nodeEl.style.top = `${node.y - 15}px`;
                     }
                 });
             }
@@ -3404,30 +3431,27 @@
             maxX += shiftX;
             maxY += shiftY;
             
-            // Set new canvas size with padding
+            // Set new canvas size with padding (exact fit)
             const newWidth = Math.ceil((maxX + padding) / GRID_SIZE) * GRID_SIZE;
             const newHeight = Math.ceil((maxY + padding) / GRID_SIZE) * GRID_SIZE;
             
-            // Only resize if significantly different
-            if (Math.abs(newWidth - CANVAS_WIDTH) > GRID_SIZE * 5 || 
-                Math.abs(newHeight - CANVAS_HEIGHT) > GRID_SIZE * 5) {
-                
-                CANVAS_WIDTH = newWidth;
-                CANVAS_HEIGHT = newHeight;
-                
-                const connectionsSvg = document.getElementById('connectionsSvg');
-                const gridDots = document.getElementById('gridDots');
-                const personTiles = document.getElementById('personTiles');
-                
-                regenerateGridDots();
-                
-                connectionsSvg.setAttribute('width', CANVAS_WIDTH);
-                connectionsSvg.setAttribute('height', CANVAS_HEIGHT);
-                gridDots.style.width = CANVAS_WIDTH + 'px';
-                gridDots.style.height = CANVAS_HEIGHT + 'px';
-                personTiles.style.width = CANVAS_WIDTH + 'px';
-                personTiles.style.height = CANVAS_HEIGHT + 'px';
-                
+            // Always resize to fit exactly
+            CANVAS_WIDTH = newWidth;
+            CANVAS_HEIGHT = newHeight;
+            
+            const connectionsSvg = document.getElementById('connectionsSvg');
+            const gridDots = document.getElementById('gridDots');
+            const personTiles = document.getElementById('personTiles');
+            
+            regenerateGridDots();
+            
+            connectionsSvg.setAttribute('width', CANVAS_WIDTH);
+            connectionsSvg.setAttribute('height', CANVAS_HEIGHT);
+            gridDots.style.width = CANVAS_WIDTH + 'px';
+            gridDots.style.height = CANVAS_HEIGHT + 'px';
+            personTiles.style.width = CANVAS_WIDTH + 'px';
+            personTiles.style.height = CANVAS_HEIGHT + 'px';
+            
                 gridDots.style.display = editMode ? 'block' : 'none';
                 redrawConnections();
             }
@@ -5389,6 +5413,9 @@
                     
                     // Update data table
                     populateDataTable();
+                    
+                    // Fit canvas and zoom to show all elements
+                    setTimeout(() => zoomToFit(), 100);
                     
                     isLoadingFromFirebase = false;
                 } else {
