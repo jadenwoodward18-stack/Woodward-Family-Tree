@@ -106,6 +106,46 @@
             white-space: nowrap;
         }
 
+        /* Delete Drop Zone */
+        .delete-zone {
+            position: fixed;
+            top: 55px;
+            right: 1rem;
+            width: 120px;
+            height: 80px;
+            background: var(--aged-paper);
+            border: 3px dashed var(--border-color);
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            z-index: 100;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .delete-zone.visible {
+            display: flex;
+        }
+
+        .delete-zone.drag-over {
+            background: #ffdddd;
+            border-color: #cc4444;
+            transform: scale(1.05);
+        }
+
+        .delete-zone-icon {
+            font-size: 1.5rem;
+        }
+
+        .delete-zone-text {
+            font-size: 0.75rem;
+            color: var(--ink-faded);
+            text-align: center;
+        }
+
         /* Main Container */
         .container {
             width: 100%;
@@ -1351,25 +1391,6 @@
             width: 100%;
         }
 
-        .tile-remove {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 20px;
-            height: 20px;
-            background: var(--sepia);
-            color: var(--parchment);
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 0.7rem;
-            display: none;
-        }
-
-        .person-tile:hover .tile-remove {
-            display: block;
-        }
-
         /* Marriage Node Styles */
         .marriage-node {
             position: absolute;
@@ -1884,6 +1905,21 @@
                 font-size: 0.7rem;
             }
             
+            .delete-zone {
+                top: 50px;
+                right: 0.5rem;
+                width: 80px;
+                height: 60px;
+            }
+            
+            .delete-zone-icon {
+                font-size: 1.2rem;
+            }
+            
+            .delete-zone-text {
+                font-size: 0.65rem;
+            }
+            
             /* Grid Canvas - Touch-friendly */
             .grid-canvas {
                 touch-action: pan-x pan-y;
@@ -2111,6 +2147,12 @@
             <button class="floating-btn" id="homeBtn" title="Fit tree to screen">🏠</button>
             <button class="floating-btn" id="settingsBtn" title="Settings">⚙️</button>
         </div>
+    </div>
+    
+    <!-- Delete Drop Zone (visible in edit mode) -->
+    <div class="delete-zone" id="deleteZone">
+        <span class="delete-zone-icon">🗑️</span>
+        <span class="delete-zone-text">Drop to Delete</span>
     </div>
 
     <div class="container">
@@ -3453,6 +3495,12 @@
                     // Close settings panel when toggling edit mode
                     closeSettings();
                     
+                    // Show/hide delete zone
+                    const deleteZone = document.getElementById('deleteZone');
+                    if (deleteZone) {
+                        deleteZone.classList.toggle('visible', editMode);
+                    }
+                    
                     if (editMode) {
                         // Enter edit mode
                         editingControls.style.display = 'flex';
@@ -3919,15 +3967,12 @@
             console.log('Tile created with position:', tile.style.left, tile.style.top); // Debug
             
             tile.innerHTML = `
-                <button class="tile-remove" onclick="removePerson('${person.id}')">×</button>
                 <div class="tile-name">${person.name}</div>
                 <div class="tile-dates">${person.dates}</div>
             `;
             
             // Click handler for view mode and drawing lines
             tile.addEventListener('click', (e) => {
-                if (e.target.classList.contains('tile-remove')) return;
-                
                 if (!editMode) {
                     // View mode - open dossier
                     openDossier(person.id);
@@ -3962,7 +4007,6 @@
             
             // Double-click to edit (only in edit mode)
             tile.addEventListener('dblclick', (e) => {
-                if (e.target.classList.contains('tile-remove')) return;
                 if (!editMode) return; // Only allow editing in edit mode
                 
                 const newName = prompt('Edit name:', person.name);
@@ -3982,9 +4026,9 @@
             // Drag functionality - only in edit mode
             let isDragging = false;
             let offsetX, offsetY;
+            let lastMouseX = 0, lastMouseY = 0;
             
             tile.addEventListener('mousedown', (e) => {
-                if (e.target.classList.contains('tile-remove')) return;
                 if (!editMode) return; // Only drag in edit mode
                 if (drawLinesMode) return; // Don't drag in draw lines mode
                 
@@ -4021,6 +4065,13 @@
             
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
+                
+                // Track last mouse position for delete zone detection
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                
+                // Update delete zone highlight
+                updateDeleteZoneHighlight(e.clientX, e.clientY);
                 
                 const canvas = document.getElementById('gridCanvas');
                 const canvasRect = canvas.getBoundingClientRect();
@@ -4087,6 +4138,17 @@
                 if (isDragging) {
                     isDragging = false;
                     tile.classList.remove('dragging');
+                    
+                    // Clear delete zone highlight
+                    const deleteZone = document.getElementById('deleteZone');
+                    if (deleteZone) deleteZone.classList.remove('drag-over');
+                    
+                    // Check if dropped on delete zone
+                    if (isOverDeleteZone(lastMouseX, lastMouseY)) {
+                        removePerson(person.id, true);
+                        return;
+                    }
+                    
                     // Trim canvas after drag completes
                     setTimeout(() => trimCanvasToFit(), 100);
                     saveToLocalStorage();
@@ -4095,7 +4157,6 @@
             
             // Touch events for mobile
             tile.addEventListener('touchstart', (e) => {
-                if (e.target.classList.contains('tile-remove')) return;
                 if (!editMode) return;
                 if (drawLinesMode) return;
                 
@@ -4114,6 +4175,14 @@
                 if (!isDragging) return;
                 
                 const touch = e.touches[0];
+                
+                // Track last touch position for delete zone detection
+                lastMouseX = touch.clientX;
+                lastMouseY = touch.clientY;
+                
+                // Update delete zone highlight
+                updateDeleteZoneHighlight(touch.clientX, touch.clientY);
+                
                 const canvas = document.getElementById('gridCanvas');
                 const canvasRect = canvas.getBoundingClientRect();
                 
@@ -4162,6 +4231,17 @@
                 if (isDragging) {
                     isDragging = false;
                     tile.classList.remove('dragging');
+                    
+                    // Clear delete zone highlight
+                    const deleteZone = document.getElementById('deleteZone');
+                    if (deleteZone) deleteZone.classList.remove('drag-over');
+                    
+                    // Check if dropped on delete zone
+                    if (isOverDeleteZone(lastMouseX, lastMouseY)) {
+                        removePerson(person.id, true);
+                        return;
+                    }
+                    
                     setTimeout(() => trimCanvasToFit(), 100);
                     saveToLocalStorage();
                 }
@@ -4204,6 +4284,7 @@
             let isDragging = false;
             let offsetX = 0;
             let offsetY = 0;
+            let lastMouseX = 0, lastMouseY = 0;
             
             nodeEl.addEventListener('mousedown', (e) => {
                 if (!editMode) return;
@@ -4239,6 +4320,13 @@
             
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
+                
+                // Track last mouse position for delete zone detection
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                
+                // Update delete zone highlight
+                updateDeleteZoneHighlight(e.clientX, e.clientY);
                 
                 const canvas = document.getElementById('gridCanvas');
                 const canvasRect = canvas.getBoundingClientRect();
@@ -4295,6 +4383,17 @@
                 if (isDragging) {
                     isDragging = false;
                     nodeEl.classList.remove('dragging');
+                    
+                    // Clear delete zone highlight
+                    const deleteZone = document.getElementById('deleteZone');
+                    if (deleteZone) deleteZone.classList.remove('drag-over');
+                    
+                    // Check if dropped on delete zone
+                    if (isOverDeleteZone(lastMouseX, lastMouseY)) {
+                        removeMarriageNode(node.id, true);
+                        return;
+                    }
+                    
                     saveToLocalStorage();
                 }
             });
@@ -4326,16 +4425,66 @@
         }
 
         // Remove Person
-        function removePerson(id) {
-            if (confirm('Remove this person?')) {
-                const tile = document.querySelector(`[data-id="${id}"]`);
-                if (tile) tile.remove();
-                
-                persons = persons.filter(p => p.id !== id);
-                
-                // Remove connections involving this person
-                connections = connections.filter(c => c.person1 !== id && c.person2 !== id);
-                redrawConnections();
+        function removePerson(id, skipConfirm = false) {
+            if (!skipConfirm && !confirm('Remove this person?')) {
+                return false;
+            }
+            
+            const tile = document.querySelector(`[data-id="${id}"]`);
+            if (tile) tile.remove();
+            
+            persons = persons.filter(p => p.id !== id);
+            
+            // Remove connections involving this person
+            connections = connections.filter(c => c.person1 !== id && c.person2 !== id);
+            redrawConnections();
+            saveToLocalStorage();
+            
+            // Update data table if visible
+            if (document.getElementById('data').classList.contains('active')) {
+                populateDataTable();
+            }
+            
+            return true;
+        }
+        
+        function removeMarriageNode(id, skipConfirm = false) {
+            if (!skipConfirm && !confirm('Remove this marriage node?')) {
+                return false;
+            }
+            
+            const node = document.querySelector(`[data-id="${id}"]`);
+            if (node) node.remove();
+            
+            marriageNodes = marriageNodes.filter(m => m.id !== id);
+            
+            // Remove connections involving this node
+            connections = connections.filter(c => c.person1 !== id && c.person2 !== id);
+            redrawConnections();
+            saveToLocalStorage();
+            
+            return true;
+        }
+        
+        // Check if point is over delete zone
+        function isOverDeleteZone(clientX, clientY) {
+            const deleteZone = document.getElementById('deleteZone');
+            if (!deleteZone || !deleteZone.classList.contains('visible')) return false;
+            
+            const rect = deleteZone.getBoundingClientRect();
+            return clientX >= rect.left && clientX <= rect.right && 
+                   clientY >= rect.top && clientY <= rect.bottom;
+        }
+        
+        // Update delete zone visual state during drag
+        function updateDeleteZoneHighlight(clientX, clientY) {
+            const deleteZone = document.getElementById('deleteZone');
+            if (!deleteZone) return;
+            
+            if (isOverDeleteZone(clientX, clientY)) {
+                deleteZone.classList.add('drag-over');
+            } else {
+                deleteZone.classList.remove('drag-over');
             }
         }
 
