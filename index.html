@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Woodward Family Tree</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -89,6 +94,16 @@
         .floating-btn:hover {
             background: var(--parchment);
             border-color: var(--sepia);
+        }
+
+        .sync-status {
+            background: var(--aged-paper);
+            border: 2px solid var(--border-color);
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
+            box-shadow: 0 2px 8px var(--shadow);
+            cursor: default;
+            white-space: nowrap;
         }
 
         /* Main Container */
@@ -1864,6 +1879,11 @@
                 font-size: 1rem;
             }
             
+            .sync-status {
+                padding: 0.3rem 0.5rem;
+                font-size: 0.7rem;
+            }
+            
             /* Grid Canvas - Touch-friendly */
             .grid-canvas {
                 touch-action: pan-x pan-y;
@@ -2087,6 +2107,7 @@
             <button class="nav-btn" data-view="data">Data</button>
         </div>
         <div class="nav-group nav-right">
+            <span class="sync-status" id="syncStatus" title="Firebase sync status">⚪ Ready</span>
             <button class="floating-btn" id="homeBtn" title="Fit tree to screen">🏠</button>
             <button class="floating-btn" id="settingsBtn" title="Settings">⚙️</button>
         </div>
@@ -2226,6 +2247,16 @@
             </div>
             
             <div class="settings-section">
+                <h3>☁️ Cloud Sync</h3>
+                <p style="font-size: 0.9rem; color: var(--ink-faded); margin-bottom: 1rem;">
+                    Your tree automatically syncs with Firebase in real-time. All changes are saved to the cloud.
+                </p>
+                <button class="btn-tool settings-btn-full" id="forceSyncBtn">🔄 Force Sync Now</button>
+                <button class="btn-tool settings-btn-full" id="reloadFromCloudBtn">☁️ Reload from Cloud</button>
+                <div id="lastSyncInfo" style="margin-top: 1rem; font-size: 0.85rem; color: var(--ink-faded);"></div>
+            </div>
+            
+            <div class="settings-section">
                 <h3>Configuration Files</h3>
                 <button class="btn-tool settings-btn-full" id="downloadConfigBtn">💾 Download Configuration File</button>
                 <button class="btn-tool settings-btn-full" id="uploadConfigBtn">📂 Upload Configuration File</button>
@@ -2312,6 +2343,201 @@
     </div>
 
     <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCA9GEBX37FmrF0new2E4GbYhYF3QAeB_o",
+            authDomain: "woodward-family-tree.firebaseapp.com",
+            databaseURL: "https://woodward-family-tree-default-rtdb.firebaseio.com",
+            projectId: "woodward-family-tree",
+            storageBucket: "woodward-family-tree.firebasestorage.app",
+            messagingSenderId: "986340301959",
+            appId: "1:986340301959:web:b049280c4a8766d0c5ec22",
+            measurementId: "G-32561705H8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Firebase sync status
+        let firebaseConnected = false;
+        let isSyncing = false;
+        let lastSyncTime = null;
+        
+        // Reference to the tree data in Firebase
+        const treeRef = database.ref('familyTree');
+        
+        // Save tree data to Firebase
+        function saveToFirebase() {
+            if (isSyncing) return; // Prevent recursive saves during sync
+            
+            const config = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                persons: persons.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    dates: p.dates,
+                    birthDate: p.birthDate,
+                    birthPlace: p.birthPlace,
+                    deathDate: p.deathDate,
+                    parents: p.parents,
+                    spouse: p.spouse,
+                    notes: p.notes,
+                    x: p.x,
+                    y: p.y,
+                    deceased: p.deceased,
+                    inVitro: p.inVitro
+                })),
+                connections: connections,
+                nextPersonId: nextPersonId,
+                nextMarriageId: nextMarriageId
+            };
+            
+            treeRef.set(config)
+                .then(() => {
+                    lastSyncTime = new Date();
+                    updateSyncStatus('saved');
+                    console.log('Tree saved to Firebase');
+                })
+                .catch((error) => {
+                    console.error('Error saving to Firebase:', error);
+                    updateSyncStatus('error');
+                });
+        }
+        
+        // Load tree data from Firebase
+        function loadFromFirebase(snapshot) {
+            const config = snapshot.val();
+            if (!config || !config.persons) {
+                console.log('No data in Firebase or invalid data');
+                // If we have local data and Firebase is empty, save local to Firebase
+                if (persons.length > 0) {
+                    console.log('Uploading local data to Firebase...');
+                    saveToFirebase();
+                }
+                return;
+            }
+            
+            // Don't reload if we're the ones who just saved
+            if (isSyncing) return;
+            
+            isSyncing = true;
+            console.log('Loading from Firebase:', config.persons.length, 'persons');
+            
+            // Clear existing data
+            persons.length = 0;
+            connections.length = 0;
+            marriageNodes.length = 0;
+            selectedPersons = [];
+            selectedForLine = [];
+            
+            // Clear DOM elements
+            const personTiles = document.getElementById('personTiles');
+            const connectionsSvg = document.getElementById('connectionsSvg');
+            if (personTiles) personTiles.innerHTML = '';
+            if (connectionsSvg) connectionsSvg.innerHTML = '';
+            
+            // Load persons
+            nextPersonId = config.nextPersonId || 1;
+            nextMarriageId = config.nextMarriageId || 1;
+            
+            config.persons.forEach(p => {
+                const person = {
+                    id: p.id,
+                    name: p.name || '',
+                    dates: p.dates || '',
+                    birthDate: p.birthDate || '',
+                    birthPlace: p.birthPlace || '',
+                    deathDate: p.deathDate || '',
+                    parents: p.parents || '',
+                    spouse: p.spouse || '',
+                    notes: p.notes || '',
+                    x: p.x || 0,
+                    y: p.y || 0,
+                    deceased: p.deceased || false,
+                    inVitro: p.inVitro || false
+                };
+                persons.push(person);
+                renderPerson(person);
+            });
+            
+            // Load connections
+            if (config.connections && Array.isArray(config.connections)) {
+                config.connections.forEach(conn => {
+                    connections.push(conn);
+                });
+                redrawConnections();
+            }
+            
+            lastSyncTime = new Date();
+            updateSyncStatus('loaded');
+            isSyncing = false;
+            
+            // Update data table if visible
+            if (document.getElementById('data').classList.contains('active')) {
+                populateDataTable();
+            }
+        }
+        
+        // Update sync status indicator
+        function updateSyncStatus(status) {
+            const indicator = document.getElementById('syncStatus');
+            if (!indicator) return;
+            
+            switch(status) {
+                case 'connected':
+                    indicator.textContent = '🟢 Connected';
+                    indicator.title = 'Connected to Firebase';
+                    break;
+                case 'disconnected':
+                    indicator.textContent = '🔴 Offline';
+                    indicator.title = 'Not connected to Firebase';
+                    break;
+                case 'saved':
+                    indicator.textContent = '🟢 Saved';
+                    indicator.title = 'Last saved: ' + new Date().toLocaleTimeString();
+                    break;
+                case 'loading':
+                    indicator.textContent = '🟡 Syncing...';
+                    indicator.title = 'Syncing with Firebase';
+                    break;
+                case 'error':
+                    indicator.textContent = '🔴 Error';
+                    indicator.title = 'Error syncing with Firebase';
+                    break;
+                default:
+                    indicator.textContent = '⚪ Ready';
+            }
+        }
+        
+        // Set up Firebase real-time listener
+        function setupFirebaseListener() {
+            // Listen for connection state
+            const connectedRef = database.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                firebaseConnected = snap.val() === true;
+                updateSyncStatus(firebaseConnected ? 'connected' : 'disconnected');
+            });
+            
+            // Listen for data changes
+            treeRef.on('value', (snapshot) => {
+                if (!isSyncing && snapshot.exists()) {
+                    updateSyncStatus('loading');
+                    loadFromFirebase(snapshot);
+                }
+            });
+        }
+        
+        // Debounced save function to avoid too many writes
+        let saveTimeout = null;
+        function debouncedSaveToFirebase() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveToFirebase();
+            }, 1000); // Save after 1 second of no changes
+        }
+
         // Family Data
         const familyData = {
             'tim': {
@@ -4424,6 +4650,9 @@
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
                 localStorage.setItem(LAST_SAVED_KEY, new Date().toISOString());
                 console.log('Auto-saved to localStorage');
+                
+                // Also sync to Firebase (debounced)
+                debouncedSaveToFirebase();
             } catch (e) {
                 console.error('Failed to save:', e);
             }
@@ -4949,6 +5178,33 @@
                         uploadConfiguration(file);
                     }
                     e.target.value = ''; // Reset input
+                });
+            }
+            
+            // Cloud Sync buttons
+            const forceSyncBtn = document.getElementById('forceSyncBtn');
+            if (forceSyncBtn) {
+                forceSyncBtn.addEventListener('click', () => {
+                    saveToFirebase();
+                    alert('Tree synced to cloud!');
+                });
+            }
+            
+            const reloadFromCloudBtn = document.getElementById('reloadFromCloudBtn');
+            if (reloadFromCloudBtn) {
+                reloadFromCloudBtn.addEventListener('click', () => {
+                    if (confirm('This will reload the tree from the cloud, replacing any local changes. Continue?')) {
+                        treeRef.once('value').then((snapshot) => {
+                            if (snapshot.exists()) {
+                                loadFromFirebase(snapshot);
+                                alert('Tree reloaded from cloud!');
+                            } else {
+                                alert('No data found in cloud.');
+                            }
+                        }).catch((error) => {
+                            alert('Error loading from cloud: ' + error.message);
+                        });
+                    }
                 });
             }
         });
@@ -5572,6 +5828,7 @@
             initializeGrid();
             setupMobileControls();
             setupHomeButton();
+            setupFirebaseListener(); // Initialize Firebase real-time sync
         });
     </script>
 </body>
