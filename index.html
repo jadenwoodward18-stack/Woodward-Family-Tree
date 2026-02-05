@@ -2363,6 +2363,7 @@
         let firebaseConnected = false;
         let isSyncing = false;
         let lastSyncTime = null;
+        let lastLocalChange = 0; // Track when we last made a local change
         
         // Reference to the tree data in Firebase
         const treeRef = database.ref('familyTree');
@@ -2370,6 +2371,8 @@
         // Save tree data to Firebase
         function saveToFirebase() {
             if (isSyncing) return; // Prevent recursive saves during sync
+            
+            isSyncing = true; // Prevent listener from reloading while we save
             
             const config = {
                 version: '1.0',
@@ -2389,6 +2392,11 @@
                     deceased: p.deceased,
                     inVitro: p.inVitro
                 })),
+                marriageNodes: marriageNodes.map(m => ({
+                    id: m.id,
+                    x: m.x,
+                    y: m.y
+                })),
                 connections: connections,
                 nextPersonId: nextPersonId,
                 nextMarriageId: nextMarriageId
@@ -2399,10 +2407,13 @@
                     lastSyncTime = new Date();
                     updateSyncStatus('saved');
                     console.log('Tree saved to Firebase');
+                    // Allow listener to work again after a short delay
+                    setTimeout(() => { isSyncing = false; }, 500);
                 })
                 .catch((error) => {
                     console.error('Error saving to Firebase:', error);
                     updateSyncStatus('error');
+                    isSyncing = false;
                 });
         }
         
@@ -2470,6 +2481,20 @@
                 redrawConnections();
             }
             
+            // Load marriage nodes
+            if (config.marriageNodes && Array.isArray(config.marriageNodes)) {
+                config.marriageNodes.forEach(m => {
+                    const node = {
+                        id: m.id,
+                        x: m.x || 0,
+                        y: m.y || 0
+                    };
+                    marriageNodes.push(node);
+                    renderMarriageNode(node);
+                });
+                console.log('Marriage nodes loaded from Firebase:', marriageNodes.length);
+            }
+            
             lastSyncTime = new Date();
             updateSyncStatus('loaded');
             isSyncing = false;
@@ -2522,7 +2547,17 @@
             
             // Listen for data changes
             treeRef.on('value', (snapshot) => {
-                if (!isSyncing && snapshot.exists()) {
+                // Skip if we're actively syncing
+                if (isSyncing) return;
+                
+                // Skip if we made a local change in the last 3 seconds
+                // This prevents Firebase from overwriting our recent changes
+                if (Date.now() - lastLocalChange < 3000) {
+                    console.log('Skipping Firebase reload - recent local change');
+                    return;
+                }
+                
+                if (snapshot.exists()) {
                     updateSyncStatus('loading');
                     loadFromFirebase(snapshot);
                 }
@@ -3925,9 +3960,10 @@
                 }
             });
             
-            // Double-click to edit
+            // Double-click to edit (only in edit mode)
             tile.addEventListener('dblclick', (e) => {
                 if (e.target.classList.contains('tile-remove')) return;
+                if (!editMode) return; // Only allow editing in edit mode
                 
                 const newName = prompt('Edit name:', person.name);
                 if (newName !== null && newName !== '') {
@@ -3939,6 +3975,7 @@
                     
                     tile.querySelector('.tile-name').textContent = person.name;
                     tile.querySelector('.tile-dates').textContent = person.dates;
+                    saveToLocalStorage();
                 }
             });
             
@@ -4137,15 +4174,18 @@
 
         // Marriage Node Functions
         function addMarriageNode(x, y) {
+            console.log('addMarriageNode called with x:', x, 'y:', y);
             const marriageNode = {
                 id: 'marriage_' + nextMarriageId++,
                 x: x,
                 y: y
             };
             
+            console.log('Created marriage node:', marriageNode);
             marriageNodes.push(marriageNode);
             renderMarriageNode(marriageNode);
             saveToLocalStorage();
+            console.log('Total marriage nodes:', marriageNodes.length);
         }
 
         function renderMarriageNode(node) {
@@ -4646,6 +4686,7 @@
             if (isOffline) return;
             
             try {
+                lastLocalChange = Date.now(); // Track when we made a local change
                 const config = getCurrentConfiguration();
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
                 localStorage.setItem(LAST_SAVED_KEY, new Date().toISOString());
